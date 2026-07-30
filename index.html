@@ -542,7 +542,18 @@ function mergeData(local, cloud){
       if(!ex){ cm.set(it.id, it); }            // 本地独有的 → 保留
       else {                                    // ID 冲突：较新的胜出（_ts 越大越新）
         const lt=it._ts||0, ct=ex._ts||0;
-        if(lt>=ct) cm.set(it.id, it);
+        if(lt>=ct){
+          // 本机较新或相等：以本机为基底，但保留对端已勾选的“当日临时代办”，
+          // 避免两台手机各自勾选不同待办时，后同步的一方把对方的勾选覆盖掉。
+          let merged=it;
+          if(k==='bookings'){
+            merged=JSON.parse(JSON.stringify(it));
+            const td={...(merged.todoDone||{})};
+            Object.keys(ex.todoDone||{}).forEach(idx=>{ if(ex.todoDone[idx]) td[idx]=true; });
+            merged.todoDone=td;
+          }
+          cm.set(it.id, merged);
+        }
       }
     });
     out[k]=Array.from(cm.values()).filter(x=>!delSet.has(x.id));
@@ -565,6 +576,9 @@ function cloudHasData(c){
   return !!( (c.bookings&&c.bookings.length) || (c.transactions&&c.transactions.length)
     || (c.inventory&&c.inventory.length) || (c.gallery&&c.gallery.length) );
 }
+// 业务数据指纹：忽略每次都会变的 _syncTS，用于判断“数据是否真的变了”，
+// 避免后台轮询每 6 秒都因 _syncTS 变化而整页重绘（会重置日历选中日期等界面状态）
+const normData=d=>{ const c=JSON.parse(JSON.stringify(d||{})); delete c._syncTS; return JSON.stringify(c); };
 
 // 云端读写抽象：本地/沙箱模式用 /api/data；GitHub Pages 模式用仓库里的 data.json 当同步后端
 // 云端配置：令牌不写进源码（会被 GitHub 密钥扫描拦截，也更不安全）。
@@ -767,21 +781,29 @@ setInterval(()=>{
 },1000);
 
 // 保存时与云端合并后写回（带简单节流，避免并发请求过多）
-let _pushing=false;
+// 注意：不能用「if(_pushing)return」硬丢弃重叠的保存——连续操作（如先改状态再勾待办）
+// 后一次 save() 的推送会被丢掉，导致待办/状态永远同步不出去。改为「脏标记」：
+// 推送过程中若又来一次保存，等本次推完再补推一次，保证最新数据一定到云端。
+let _pushing=false,_dirty=false;
 async function syncPush(){
-  if(_pushing) return; _pushing=true;
-  setSyncStatus('busy','同步中…');
+  if(_pushing){ _dirty=true; return; }
+  _pushing=true;
   try{
-    const c=await cloudGet();
-    if(c&&c.data&&cloudHasData(c.data)){ DB.data=mergeData(DB.data, c.data); _cloudSha=c.sha||_cloudSha; }
-  }catch(e){console.warn('拉取云端失败',e); setSyncStatus('err','拉取失败');}
-  try{
-    DB.data._syncTS=Date.now();
-    localStorage.setItem(DB._k,JSON.stringify(DB.data));
-    _cloudSha=await cloudPut(DB.data,_cloudSha);
-    setSyncStatus('ok');
-  }catch(e){console.warn('推送云端失败',e); setSyncStatus('err', _passMismatch?'口令不一致':'推送失败');}
-  _pushing=false;
+    do{
+      _dirty=false;
+      setSyncStatus('busy','同步中…');
+      try{
+        const c=await cloudGet();
+        if(c&&c.data&&cloudHasData(c.data)){ DB.data=mergeData(DB.data, c.data); _cloudSha=c.sha||_cloudSha; }
+      }catch(e){console.warn('拉取云端失败',e); setSyncStatus('err','拉取失败');}
+      try{
+        DB.data._syncTS=Date.now();
+        localStorage.setItem(DB._k,JSON.stringify(DB.data));
+        _cloudSha=await cloudPut(DB.data,_cloudSha);
+        setSyncStatus('ok');
+      }catch(e){console.warn('推送云端失败',e); setSyncStatus('err', _passMismatch?'口令不一致':'推送失败');}
+    }while(_dirty);
+  }finally{ _pushing=false; }
 }
 
 // 后台轮询：近实时同步，无需手动刷新
@@ -794,7 +816,7 @@ async function syncPoll(){
   try{
     const c=await cloudGet();
     if(!c||!c.data||!cloudHasData(c.data)){ setSyncStatus('ok'); return; }
-    const before=JSON.stringify(DB.data);
+    const before=normData(DB.data);
     DB.data=mergeData(DB.data, c.data);
     _cloudSha=c.sha||_cloudSha;
     DB.data._syncTS=Date.now();
@@ -802,7 +824,7 @@ async function syncPoll(){
     // 后台轮询只【拉取并合并】他人改动到本地，绝不回写云端——
     // 回写只发生在用户主动保存(DB.save)和首屏(autoSync)时，
     // 否则两台设备各自每 6 秒互推会形成 409 冲突风暴、把对方写入顶掉。
-    if(JSON.stringify(DB.data)!==before){
+    if(normData(DB.data)!==before){
       if(currentView==='orders'&&ordersSubTab==='tx'){ const p=$('#ordersPanel'); if(p){p.innerHTML=viewTx();bindTx();} }
       else { renderMain(); }
       renderNav();renderTabbar();
@@ -1224,6 +1246,7 @@ function setBookingStatus(id,newStatus){
   const oldStatus=b.status;
   if(oldStatus===newStatus)return;
   b.status=newStatus;
+  b._ts=Date.now();   // 必须刷新时间戳，否则合并时 _ts 与对端相同会被判“本机更旧”而回退状态
   // 如果改为已完成，自动记录尾款收支
   if(newStatus==='已完成'){
     const paid=DB.data.transactions.filter(t=>t.orderId===b.id&&t.type==='收入').reduce((s,t)=>s+t.amount,0);
@@ -1315,6 +1338,7 @@ function bindOrders(){setOrdersTab(ordersSubTab);}
 
 /* ---- 预约排单 ---- */
 let calDate=new Date();
+let calSelDay=null;   // 当前选中的日期；null 表示“今天”。后台轮询重绘时保留，避免跳回今天
 let calView='calendar';
 function viewBooking(){
   const d=DB.data;
@@ -1368,7 +1392,7 @@ function calViewHTML(){
   const first=new Date(y,m,1);const firstDow=first.getDay();
   const days=new Date(y,m+1,0).getDate();
   const dows=['日','一','二','三','四','五','六'];
-  const ds=new Date().toISOString().slice(0,10);
+  const ds=calSelDay||new Date().toISOString().slice(0,10);
   let cells='';
   for(let i=0;i<firstDow;i++)cells+=`<div class="cal-day other"></div>`;
   for(let i=1;i<=days;i++){
@@ -1376,7 +1400,7 @@ function calViewHTML(){
     const mms=String(m+1).padStart(2,'0');
     const ds2=`${y}-${mms}-${dd}`;
     const has=DB.data.bookings.some(b=>b.date===ds2);
-    const cls=(ds===ds2?' today':'')+(has?' has-event':'');
+    const cls=(ds===ds2?' selected':'')+(ds2===new Date().toISOString().slice(0,10)?' today':'')+(has?' has-event':'');
     cells+=`<div class="cal-day${cls}" data-day="${ds2}">${i}</div>`;
   }
   return `
@@ -1436,6 +1460,7 @@ function dayDetailHTML(ds){
   return html;
 }
 function showDayDetail(ds){
+  calSelDay=ds;   // 记住选中日期，后台轮询重绘时不再跳回今天
   // 渲染日历 + 当日详情
   const y=calDate.getFullYear(),m=calDate.getMonth();
   const first=new Date(y,m,1);const firstDow=first.getDay();
