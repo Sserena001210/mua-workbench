@@ -679,24 +679,21 @@ async function cloudGet(){
     return {data:await res.json()};
   }
 }
-async function cloudPut(data, sha){
+async function cloudPut(data, sha, _try){
+  _try=_try||0;
   if(GH.enabled){
     await ensureKey();
     if(_cloudOff) throw new Error('云端已关闭');
     const payload=await ENC.encrypt(data); // 加密后再上传，仓库只存密文
     const body={message:'sync '+new Date().toISOString(), content:btoa(payload)};
     if(sha) body.sha=sha;
-    // 两端几乎同时推送会出现 sha 冲突(409)：重新拉取→合并→再推，避免丢数据
-    let r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(body)});
+    // 两端几乎同时推送会出现 sha 冲突(409)：重新拉取→合并→再推，最多重试 5 次，避免丢数据
+    const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(body)});
     if(r.status===409){
-      try{
-        const cur=await cloudGet();
-        if(cur&&cur.data){ data=mergeData(data, cur.data); }
-        const p2=await ENC.encrypt(data);
-        const b2={message:'sync(retry) '+new Date().toISOString(), content:btoa(p2)};
-        if(cur&&cur.sha) b2.sha=cur.sha;
-        r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(b2)});
-      }catch(e){ throw new Error('gh put retry: '+e); }
+      if(_try>=5) throw new Error('gh put 409 重试超限');
+      const cur=await cloudGet();
+      if(cur&&cur.data){ data=mergeData(data, cur.data); }
+      return cloudPut(data, cur?cur.sha:null, _try+1);
     }
     if(!r.ok) throw new Error('gh put '+r.status);
     return (await r.json()).content.sha;
@@ -736,8 +733,9 @@ async function syncPoll(){
     _cloudSha=c.sha||_cloudSha;
     DB.data._syncTS=Date.now();
     try{localStorage.setItem(DB._k,JSON.stringify(DB.data));}catch(e){}
-    _cloudSha=await cloudPut(DB.data,_cloudSha);
+    // 只有云端带来了本地没有的新数据才回写，避免两台设备各自空转、互相 409 把对方写入顶掉
     if(JSON.stringify(DB.data)!==before){
+      _cloudSha=await cloudPut(DB.data,_cloudSha);
       if(currentView==='orders'&&ordersSubTab==='tx'){ const p=$('#ordersPanel'); if(p){p.innerHTML=viewTx();bindTx();} }
       else { renderMain(); }
       renderNav();renderTabbar();
