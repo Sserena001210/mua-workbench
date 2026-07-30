@@ -733,9 +733,10 @@ async function syncPoll(){
     _cloudSha=c.sha||_cloudSha;
     DB.data._syncTS=Date.now();
     try{localStorage.setItem(DB._k,JSON.stringify(DB.data));}catch(e){}
-    // 只有云端带来了本地没有的新数据才回写，避免两台设备各自空转、互相 409 把对方写入顶掉
+    // 后台轮询只【拉取并合并】他人改动到本地，绝不回写云端——
+    // 回写只发生在用户主动保存(DB.save)和首屏(autoSync)时，
+    // 否则两台设备各自每 6 秒互推会形成 409 冲突风暴、把对方写入顶掉。
     if(JSON.stringify(DB.data)!==before){
-      _cloudSha=await cloudPut(DB.data,_cloudSha);
       if(currentView==='orders'&&ordersSubTab==='tx'){ const p=$('#ordersPanel'); if(p){p.innerHTML=viewTx();bindTx();} }
       else { renderMain(); }
       renderNav();renderTabbar();
