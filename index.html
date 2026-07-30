@@ -1,0 +1,2989 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#E8E4DF">
+<title>化妆师工作台</title>
+<style>
+/* ========== 多巴胺配色系统 ========== */
+:root{
+  --bg:#FFF8F0;          /* 主背景 暖奶油白 */
+  --bg-2:#FFF0E6;        /* 次背景 蜜桃 */
+  --card:#FFFFFF;        /* 卡片 纯白 */
+  --card-2:#FFF5FA;      /* 浅卡片 樱花 */
+  --ink:#2D1B4E;         /* 主文字 深紫 */
+  --ink-2:#6B5B8C;       /* 次文字 */
+  --ink-3:#B0A3C9;       /* 弱文字 */
+  --line:#F0E6FF;        /* 分割线 淡紫 */
+  --line-2:#E0D0F5;      /* 强分割线 */
+  --accent:#FF5C8A;      /* 主强调 热粉 */
+  --accent-2:#FF8FB1;    /* 次强调 */
+  --accent-soft:#FFE0EC; /* 强调浅 */
+  --income:#00C896;      /* 收入 翠绿 */
+  --expense:#FF4757;     /* 支出 鲜红 */
+  --warn:#FFA502;        /* 提醒 活力橙 */
+  --info:#3742FA;        /* 信息 电光蓝 */
+  --purple:#A55EEA;      /* 活力紫 */
+  --cyan:#00D9FF;        /* 青蓝 */
+  --yellow:#FFD93D;      /* 明黄 */
+  --shadow:0 4px 16px rgba(255,92,138,.10);
+  --shadow-2:0 8px 28px rgba(255,92,138,.16);
+  --radius:16px;
+  --radius-sm:10px;
+  --nav-h:62px;
+  --safe-b:env(safe-area-inset-bottom, 0px);
+  --safe-t:env(safe-area-inset-top, 0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+input,textarea,select{font-family:inherit;font-size:inherit;color:var(--ink);background:none;border:none;outline:none;-webkit-appearance:none;border-radius:0;}
+input::placeholder,textarea::placeholder{color:var(--ink-3);}
+ul{list-style:none;}
+img{max-width:100%;display:block;}
+
+/* ========== 主框架 ========== */
+.app{min-height:100vh;display:flex;}
+/* 左侧固定侧边栏 - 桌面端 */
+.sidebar{
+  width:200px;flex-shrink:0;background:var(--card);
+  border-right:1px solid var(--line);
+  position:fixed;top:0;left:0;bottom:0;
+  display:flex;flex-direction:column;
+  z-index:50;padding-top:var(--safe-t);
+  transition:transform .3s ease;
+}
+.sidebar-head{padding:24px 18px 16px;}
+.sidebar-head .logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:.5px;}
+.sidebar-head .sub{font-size:11px;color:var(--ink-3);margin-top:2px;}
+.nav-list{flex:1;overflow-y:auto;padding:8px 10px 80px;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;border-radius:var(--radius-sm);
+  color:var(--ink-2);font-size:14px;margin-bottom:2px;
+  transition:all .2s;width:100%;text-align:left;
+}
+.nav-item:hover{background:var(--bg-2);}
+.nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
+.nav-item .ico{width:20px;height:20px;flex-shrink:0;}
+.nav-item .del{margin-left:auto;width:18px;height:18px;opacity:0;transition:opacity .2s;}
+.nav-item.editing .del{opacity:.5;}
+.nav-item .del:hover{opacity:1;color:var(--expense);}
+.sidebar-foot{padding:12px 14px 20px;border-top:1px solid var(--line);}
+.add-nav{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-size:14px;padding:11px 14px;width:100%;border-radius:var(--radius-sm);}
+.add-nav:hover{background:var(--bg-2);color:var(--accent);}
+.add-nav .ico{width:20px;height:20px;flex-shrink:0;}
+.share-box{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;}
+.share-label{font-size:11px;color:var(--ink-3);margin-bottom:4px;}
+.share-url{font-size:11px;color:var(--accent);word-break:break-all;line-height:1.4;}
+
+/* 主内容区 */
+.main{flex:1;margin-left:200px;min-width:0;padding-bottom:calc(var(--nav-h) + var(--safe-b) + 12px);}
+.main-inner{max-width:840px;margin:0 auto;padding:16px;}
+
+/* 移动端顶部栏 */
+.mobile-topbar{
+  display:none;
+  position:sticky;top:0;z-index:40;
+  background:var(--bg);
+  padding:calc(var(--safe-t) + 8px) 14px 8px;
+  align-items:center;justify-content:space-between;
+}
+.mobile-topbar .menu-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:10px;}
+.mobile-topbar .menu-btn:active{background:var(--card);}
+.mobile-topbar .title{font-size:16px;font-weight:600;}
+
+/* 底部导航栏 */
+.tabbar{
+  position:fixed;bottom:0;left:0;right:0;
+  height:calc(var(--nav-h) + var(--safe-b));
+  padding-bottom:var(--safe-b);
+  background:rgba(255,255,255,.88);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-top:1px solid var(--line);
+  display:flex;align-items:stretch;z-index:45;
+  box-shadow:0 -2px 20px rgba(255,92,138,.08);
+}
+.tab-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;color:var(--ink-3);font-size:10px;transition:color .2s;
+}
+.tab-item.active{color:var(--accent);}
+.tab-item .ico{width:22px;height:22px;}
+.tab-item .label{font-size:10px;}
+
+/* ========== 通用组件 ========== */
+.page-title{font-size:22px;font-weight:800;margin-bottom:4px;letter-spacing:-.3px;background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.page-desc{font-size:13px;color:var(--ink-3);margin-bottom:16px;}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);}
+.card + .card{margin-top:12px;}
+.section-title{font-size:15px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.section-title .dot{width:4px;height:14px;border-radius:2px;background:var(--accent);}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 18px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;transition:opacity .2s;
+  box-shadow:0 3px 12px rgba(255,92,138,.25);
+}
+.btn:active{opacity:.8;}
+.btn.ghost{background:var(--bg-2);color:var(--ink-2);}
+.btn.ghost.active{background:var(--accent);color:#fff;}
+.btn.sm{padding:7px 14px;font-size:13px;}
+.btn.danger{background:var(--expense);}
+.btn.block{width:100%;}
+.btn.outline{background:transparent;border:1px solid var(--line-2);color:var(--ink-2);}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;color:var(--ink-3);margin-bottom:6px;font-weight:500;}
+.field input,.field textarea,.field select{
+  width:100%;background:var(--card-2);border:1px solid var(--line);
+  border-radius:var(--radius-sm);padding:11px 12px;font-size:14px;
+}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent);}
+.field textarea{resize:vertical;min-height:64px;}
+/* AI OCR 识别区 */
+.ai-ocr-box{background:linear-gradient(135deg,rgba(165,94,234,.06),rgba(255,92,138,.06));border:2px dashed rgba(165,94,234,.25);border-radius:var(--radius);padding:14px;}
+.ai-ocr-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.ai-badge{background:linear-gradient(135deg,var(--purple),var(--accent));color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;flex-shrink:0;}
+.ai-ocr-drop{cursor:pointer;border-radius:var(--radius-sm);overflow:hidden;text-align:center;padding:20px 12px;background:rgba(255,255,255,.6);transition:all .2s;}
+.ai-ocr-drop:active{background:rgba(255,255,255,.9);}
+.ocr-result{margin-top:10px;padding:10px;background:rgba(165,94,234,.08);border-radius:var(--radius-sm);}
+.row{display:flex;gap:12px;}
+.row>*{flex:1;}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;background:var(--accent-soft);color:var(--accent);font-weight:500;}
+.tag.green{background:rgba(0,200,150,.15);color:var(--income);}
+.tag.red{background:rgba(255,71,87,.15);color:var(--expense);}
+.tag.gold{background:rgba(255,165,2,.15);color:var(--warn);}
+.tag.blue{background:rgba(55,66,250,.15);color:var(--info);}
+.tag.purple{background:rgba(165,94,234,.15);color:var(--purple);}
+
+/* 统计卡片 */
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.stat-card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden;border:2px solid transparent;}
+.stat-card:nth-child(1){border-color:rgba(255,92,138,.2);background:linear-gradient(135deg,#fff 60%,#FFE0EC);}
+.stat-card:nth-child(2){border-color:rgba(0,200,150,.2);background:linear-gradient(135deg,#fff 60%,#D4F5E9);}
+.stat-card:nth-child(3){border-color:rgba(255,165,2,.2);background:linear-gradient(135deg,#fff 60%,#FFF3D4);}
+.stat-card:nth-child(4){border-color:rgba(165,94,234,.2);background:linear-gradient(135deg,#fff 60%,#F0E0FF);}
+.stat-card .label{font-size:12px;color:var(--ink-2);font-weight:500;}
+.stat-card .num{font-size:26px;font-weight:800;margin-top:4px;letter-spacing:-.5px;}
+.stat-card .sub{font-size:11px;color:var(--ink-3);margin-top:4px;}
+.stat-card .ring{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:48px;height:48px;}
+
+/* 收件箱 */
+.inbox-bar{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);margin-top:12px;}
+.inbox-bar .ico-wrap{width:40px;height:40px;border-radius:12px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.inbox-bar .info{flex:1;}
+.inbox-bar .info .t{font-size:14px;font-weight:600;}
+.inbox-bar .info .s{font-size:12px;color:var(--ink-3);margin-top:2px;}
+.inbox-bar .badge{min-width:24px;height:24px;padding:0 7px;border-radius:12px;background:var(--expense);color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;}
+
+/* 悬浮按钮 */
+.fab{
+  position:fixed;right:16px;bottom:calc(var(--nav-h) + var(--safe-b) + 16px);
+  width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 24px rgba(255,92,138,.45);z-index:42;transition:transform .2s;
+}
+.fab:active{transform:scale(.9);}
+
+/* ========== 弹窗 ========== */
+.modal-mask{
+  position:fixed;inset:0;background:rgba(74,69,64,.35);backdrop-filter:blur(3px);
+  z-index:100;display:none;align-items:flex-end;justify-content:center;
+}
+.modal-mask.show{display:flex;animation:fadeIn .2s;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--card);width:100%;max-width:560px;
+  border-radius:20px 20px 0 0;max-height:88vh;overflow-y:auto;
+  animation:slideUp .3s ease;padding:20px 18px calc(var(--safe-b) + 20px);
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.modal-head .t{font-size:17px;font-weight:700;}
+.modal-head .x{width:30px;height:30px;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:16px;}
+
+/* ========== 列表项 ========== */
+.list-item{background:var(--card);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);}
+.list-item + .list-item{margin-top:10px;}
+.list-item .top{display:flex;justify-content:space-between;align-items:flex-start;}
+.list-item .name{font-size:15px;font-weight:600;}
+.list-item .meta{font-size:12px;color:var(--ink-3);margin-top:3px;}
+.list-item .actions{display:flex;gap:6px;margin-top:10px;}
+.li-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.empty{text-align:center;padding:40px 20px;color:var(--ink-3);}
+.empty .ico{width:48px;height:48px;margin:0 auto 10px;opacity:.4;}
+
+/* 日历 */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.cal-head .ym{font-size:15px;font-weight:600;}
+.cal-nav{width:30px;height:30px;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-dow{text-align:center;font-size:11px;color:var(--ink-3);padding:4px 0;}
+.cal-day{text-align:center;font-size:13px;padding:8px 0;border-radius:8px;position:relative;min-height:36px;}
+.cal-day.other{color:var(--ink-3);opacity:.4;}
+.cal_day.today{font-weight:700;}
+.cal-day.today{background:var(--accent-soft);color:var(--accent);font-weight:700;}
+.cal-day.has-event::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--accent);}
+.cal-day.selected{background:var(--accent);color:#fff;}
+.cal-day.selected.has-event::after{background:#fff;}
+
+/* 图表 */
+.chart-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:160px;padding:0 4px;min-width:300px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;}
+.bar{width:60%;border-radius:4px 4px 0 0;transition:height .4s;min-height:2px;position:relative;}
+.bar-label{font-size:10px;color:var(--ink-3);}
+
+/* 快速录入浮层 */
+.quick-sheet{background:var(--card);width:100%;border-radius:20px 20px 0 0;padding:20px 18px calc(var(--safe-b)+20px);animation:slideUp .3s;}
+.quick-opts{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px;}
+.quick-opt{background:var(--bg-2);border-radius:var(--radius);padding:16px;text-align:center;}
+.quick-opt .ico{width:32px;height:32px;margin:0 auto 8px;}
+.quick-opt .t{font-size:13px;font-weight:600;}
+.quick-opt .s{font-size:11px;color:var(--ink-3);margin-top:2px;}
+
+/* 提示条 */
+.toast{position:fixed;top:calc(var(--safe-t)+60px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 22px;border-radius:20px;font-size:13px;z-index:200;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* 进度环 */
+.ring-svg{transform:rotate(-90deg);}
+.ring-bg{fill:none;stroke:var(--bg-2);stroke-width:5;}
+.ring-fg{fill:none;stroke:var(--accent);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .6s;}
+
+/* 复选框 */
+.chk{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line-2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;}
+.chk.on{background:var(--accent);border-color:var(--accent);}
+.chk.on svg{display:block;}
+.chk svg{display:none;width:12px;height:12px;}
+
+/* 选项卡 */
+.tabs{display:flex;gap:6px;background:var(--bg-2);border-radius:var(--radius-sm);padding:3px;margin-bottom:14px;}
+.tab{flex:1;text-align:center;padding:8px;border-radius:8px;font-size:13px;color:var(--ink-2);transition:all .2s;}
+.tab.active{background:var(--card);color:var(--accent);font-weight:600;box-shadow:var(--shadow);}
+
+/* 图片网格 */
+.img-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.img-grid .img-cell{aspect-ratio:1;border-radius:var(--radius-sm);overflow:hidden;background:var(--bg-2);position:relative;}
+.img-grid .img-cell img{width:100%;height:100%;object-fit:cover;}
+.img-grid .add-cell{border:1.5px dashed var(--line-2);display:flex;align-items:center;justify-content:center;color:var(--ink-3);}
+
+/* 滚动区域 */
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.scroll-x::-webkit-scrollbar{display:none;}
+
+/* 响应式 */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);width:240px;box-shadow:var(--shadow-2);}
+  .sidebar.open{transform:translateX(0);}
+  .main{margin-left:0;}
+  .mobile-topbar{display:flex;}
+  .main-inner{padding:12px;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media(min-width:769px){
+  .tabbar{display:none;}
+  .main{padding-bottom:24px;}
+  .fab{bottom:24px;}
+}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:49;}
+.sidebar-overlay.show{display:block;}
+
+/* 心情/情绪模块样式 */
+.mood-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;}
+.mood-chip{flex-shrink:0;width:48px;text-align:center;}
+.mood-chip .face{width:40px;height:40px;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 4px;border:2px solid transparent;}
+.mood-chip.sel .face{border-color:var(--accent);background:var(--accent-soft);}
+.mood-chip .lbl{font-size:10px;color:var(--ink-3);}
+
+.filter-bar{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;}
+.filter-bar::-webkit-scrollbar{display:none;}
+.filter-chip{flex-shrink:0;padding:6px 14px;border-radius:20px;background:var(--bg-2);font-size:12px;color:var(--ink-2);}
+.filter-chip.active{background:var(--accent);color:#fff;}
+
+.note-preview{font-size:13px;color:var(--ink-2);background:var(--bg-2);border-radius:var(--radius-sm);padding:10px 12px;margin-top:8px;line-height:1.6;white-space:pre-wrap;}
+
+.kpi-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.kpi{background:var(--bg-2);border-radius:8px;padding:6px 10px;font-size:11px;color:var(--ink-2);}
+.kpi b{color:var(--ink);font-size:13px;}
+/* 栏目编辑模式 */
+.nav-item.editing{padding-right:8px;}
+.nav-item.editing .nav-del{display:flex;}
+
+/* 预约状态下拉选择器 - 正方形底、三字一行、颜色统一 */
+.status-sel{
+  appearance:none;-webkit-appearance:none;
+  width:auto;min-width:60px;height:28px;
+  border:none;border-radius:14px;
+  font-size:12px;font-weight:600;
+  text-align:center;
+  white-space:nowrap;
+  line-height:28px;
+  cursor:pointer;flex-shrink:0;
+  color:#fff;
+  background-image:none;
+  padding:0 14px;
+}
+.status-sel::-ms-expand{display:none;}
+.status-sel option{color:#333;font-weight:500;padding:4px;}
+.status-sel.gold{background:var(--warn);}
+.status-sel.green{background:var(--income);}
+.status-sel.red{background:var(--expense);}
+.status-sel-wrap{position:relative;flex-shrink:0;display:inline-flex;align-items:center;}
+.nav-del{display:none;width:22px;height:22px;border-radius:50%;background:var(--expense);color:#fff;align-items:center;justify-content:center;margin-left:auto;flex-shrink:0;font-size:14px;}
+.nav-del:active{opacity:.7;}
+/* 图标选择器 */
+.icon-picker{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px;}
+.icon-opt{aspect-ratio:1;border-radius:10px;background:var(--bg-2);display:flex;align-items:center;justify-content:center;color:var(--ink-2);border:2px solid transparent;}
+.icon-opt.sel{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+.icon-opt svg{width:20px;height:20px;}
+/* 工作室名编辑 */
+.studio-input{font-size:18px;font-weight:800;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;width:100%;color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ===== 侧边栏 ===== -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-head">
+    <div class="logo" id="studioNameDisplay" onclick="editStudioName()">MUA Studio</div>
+    <div class="sub">化妆师个人工作台</div>
+  </div>
+  <nav class="nav-list" id="navList"></nav>
+  <div class="sidebar-foot">
+    <button class="add-nav" onclick="openManageNavModal()" id="editNavBtn" style="margin-top:0">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      管理栏目
+    </button>
+    <button class="add-nav" onclick="exportData()" style="margin-top:4px">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      导出数据
+    </button>
+    <button class="add-nav" onclick="importData()" style="margin-top:4px">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      导入数据
+    </button>
+    <button class="add-nav" onclick="openCloudSetup()" style="margin-top:4px">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      连接云端同步
+    </button>
+    <button class="add-nav" onclick="resetPass()" style="margin-top:4px">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      设置同步口令
+    </button>
+    <div class="share-box" id="shareBox" style="margin-top:10px;display:none">
+      <div class="share-label">当前分享链接</div>
+      <div class="share-url" id="shareUrl">加载中…</div>
+      <button class="add-nav" onclick="copyShareUrl()" style="margin-top:6px;width:100%">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        复制链接
+      </button>
+    </div>
+  </div>
+</aside>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ===== 主区域 ===== -->
+<div class="main">
+  <div class="mobile-topbar">
+    <button class="menu-btn" id="menuBtn">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <span class="title" id="mobileTitle">业务中枢</span>
+    <button class="menu-btn" id="syncBtn" onclick="manualSync()" title="同步刷新" style="width:36px">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
+  </div>
+  <div class="main-inner" id="mainInner"></div>
+</div>
+
+<!-- ===== 底部导航 ===== -->
+<nav class="tabbar" id="tabbar"></nav>
+
+<!-- ===== 悬浮按钮 ===== -->
+<button class="fab" id="fab">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<!-- ===== 弹窗容器 ===== -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal" id="modalContent"></div>
+</div>
+<div class="modal-mask" id="quickMask">
+  <div class="quick-sheet" id="quickContent"></div>
+</div>
+
+<!-- ===== 提示 ===== -->
+<div class="toast" id="toast"></div>
+
+</div>
+
+<script>
+/* ============================================================
+   数据层 - localStorage 持久化
+   ============================================================ */
+const DB={
+  _k:'mua_workbench_v1',
+  data:null,
+  init(){
+    if(this.data) return this.data;
+    try{
+      const s=localStorage.getItem(this._k);
+      if(s) this.data=JSON.parse(s);
+      else this.data=this._seed();
+    }catch(e){this.data=this._seed();}
+    return this.data;
+  },
+  save(){
+    this.data._syncTS=Date.now();
+    // 本地先落盘，保证即使网络失败也不丢数据
+    try{localStorage.setItem(this._k,JSON.stringify(this.data));}catch(e){}
+    // 异步：先与云端合并再写回，避免覆盖对方数据
+    syncPush();
+  },
+  _seed(){
+    const today=new Date();
+    const fmt=d=>d.toISOString().slice(0,10);
+    const d0=new Date(today);
+    const d1=new Date(today);d1.setDate(today.getDate()+1);
+    const d2=new Date(today);d2.setDate(today.getDate()+3);
+    const d3=new Date(today);d3.setDate(today.getDate()-2);
+    // 种子数据使用“确定性固定 ID”（101~599 区间），保证多设备各自生成的初始种子完全一致；
+    // 按 ID 合并时自动去重为一份，不会出现“两部手机各生成一份 → 重复显示”的问题。
+    // 用户后续新增的数据统一使用 uid()（13 位时间戳，与种子 ID 区间不冲突，也不会彼此碰撞）。
+    return{
+      studioName:'我的工作室',
+      nav:['home','booking','tx','inventory','gallery'],
+      customNav:[],
+      inbox:[
+        {id:201,text:'你好，我想预约下周末的新娘妆，大概需要多少钱？',from:'微信',time:Date.now()-3600000,done:false},
+        {id:202,text:'请问有约会妆容吗？可以上门吗',from:'微信',time:Date.now()-7200000,done:false},
+        {id:203,text:'上次化的妆很满意，想再约一次年会妆',from:'微信',time:Date.now()-86400000,done:true}
+      ],
+      bookings:[
+        {id:101,date:fmt(d0),start:'09:00',end:'12:00',client:'王小姐',phone:'138****8888',type:'新娘妆',addr:'西湖区文三路xx酒店',deposit:500,total:2000,status:'已定金',todo:['试妆沟通','准备头饰']},
+        {id:102,date:fmt(d2),start:'14:00',end:'16:00',client:'李女士',phone:'139****6666',type:'年会妆',addr:'上城区钱江新城',deposit:0,total:800,status:'已定金',todo:[]},
+        {id:103,date:fmt(d3),start:'10:00',end:'11:30',client:'张小姐',phone:'137****2222',type:'日常妆',addr:'工作室',deposit:300,total:300,status:'已完成',todo:[]}
+      ],
+      makeupTypes:[
+        {id:1,name:'新娘妆'},
+        {id:2,name:'年会妆'},
+        {id:3,name:'日常妆'},
+        {id:4,name:'约会妆'},
+        {id:5,name:'写真妆'},
+        {id:6,name:'舞台妆'}
+      ],
+      galleryTags:['新娘','日常','年会','写真','舞台','中式','清透','浓妆','未分类'],
+      transactions:[
+        {id:301,date:fmt(d3),orderId:103,type:'收入',amount:300,incCat:'尾款',expCat:'',note:'日常妆尾款'},
+        {id:302,date:fmt(today),orderId:101,type:'收入',amount:500,incCat:'定金',expCat:'',note:'新娘妆定金'},
+        {id:303,date:fmt(today),orderId:'',type:'支出',amount:280,incCat:'',expCat:'物料采购',note:'粉底液补充'},
+        {id:304,date:fmt(d3),orderId:'',type:'支出',amount:120,incCat:'',expCat:'交通出行',note:'上门打车'}
+      ],
+      inventory:[
+        {id:401,name:'雅诗兰黛DW粉底液',shade:'1W2',buyDate:'2025-03-15',expire:'2027-03-15',stock:3,unit:'瓶',threshold:1},
+        {id:402,name:'MAC生姜高光',shade:'Soft & Gentle',buyDate:'2024-12-01',expire:'2027-12-01',stock:1,unit:'块',threshold:1},
+        {id:403,name:'香奈儿口红',shade:'58号',buyDate:'2025-01-10',expire:'2028-01-10',stock:4,unit:'支',threshold:2},
+        {id:404,name:'花知晓腮红',shade:'03蜜桃',buyDate:'2024-08-20',expire:'2026-08-20',stock:0,unit:'块',threshold:1},
+        {id:405,name:'眉笔',shade:'灰棕色',buyDate:'2025-05-01',expire:'2028-05-01',stock:2,unit:'支',threshold:2}
+      ],
+      gallery:[
+        {id:501,orderId:103,makeup:'日常妆',imgs:[],tags:['日常','清透']},
+        {id:502,orderId:101,makeup:'新娘妆',imgs:[],tags:['新娘','中式']}
+      ],
+      bottomNav:['home','booking','tx','inventory','gallery']
+    };
+  }
+};
+DB.init();
+
+/* ============================================================
+   云同步 - 按 ID 合并（双方数据都保留，互不覆盖）+ 后台轮询
+   ============================================================ */
+function mergeData(local, cloud){
+  const out=JSON.parse(JSON.stringify(cloud||{}));
+  const cols=['bookings','transactions','inventory','gallery','inbox'];
+  cols.forEach(k=>{
+    const cm=new Map();
+    (cloud&&cloud[k]||[]).forEach(it=>{ if(it&&it.id!=null) cm.set(it.id, it); });
+    (local&&local[k]||[]).forEach(it=>{
+      if(!it||it.id==null) return;
+      const ex=cm.get(it.id);
+      if(!ex){ cm.set(it.id, it); }            // 本地独有的 → 保留
+      else {                                    // ID 冲突：较新的胜出
+        const lt=it._ts||0, ct=ex._ts||0;
+        if(lt>=ct) cm.set(it.id, it);
+      }
+    });
+    out[k]=Array.from(cm.values());
+  });
+  // 界面配置（导航/工作室名）保留本地，各设备可不同
+  out.nav=(local&&local.nav)||(cloud&&cloud.nav);
+  out.bottomNav=(local&&local.bottomNav)||(cloud&&cloud.bottomNav);
+  out.studioName=(local&&local.studioName)||(cloud&&cloud.studioName);
+  out.customNav=(local&&local.customNav)||(cloud&&cloud.customNav);
+  out.customNavDef=(local&&local.customNavDef)||(cloud&&cloud.customNavDef);
+  out.galleryTags=(local&&local.galleryTags)||(cloud&&cloud.galleryTags);
+  out.makeupTypes=(local&&local.makeupTypes)||(cloud&&cloud.makeupTypes);
+  return out;
+}
+// 云端是否含有可合并的数据（有 _syncTS 或任一集合非空都算，避免“有数据却没时间戳”时被跳过而丢数据）
+function cloudHasData(c){
+  if(!c||typeof c!=='object') return false;
+  if(c._syncTS) return true;
+  return !!( (c.bookings&&c.bookings.length) || (c.transactions&&c.transactions.length)
+    || (c.inventory&&c.inventory.length) || (c.gallery&&c.gallery.length) );
+}
+
+// 云端读写抽象：本地/沙箱模式用 /api/data；GitHub Pages 模式用仓库里的 data.json 当同步后端
+// 云端配置：令牌不写进源码（会被 GitHub 密钥扫描拦截，也更不安全）。
+// 用户名/仓库名为公开信息可内置；令牌由用户在 App 内一次性填写，仅存于本机浏览器。
+const GH = {
+  enabled: false,
+  token: '',
+  owner: 'Sserena001210',
+  repo: 'mua-workbench',
+  path: 'data.json'
+};
+const CLOUD = {
+  KEY:'mua_cloud_cfg',
+  load(){
+    try{
+      const o=JSON.parse(localStorage.getItem(this.KEY)||'null');
+      if(o&&o.token){ GH.enabled=true; GH.token=o.token; if(o.owner)GH.owner=o.owner; if(o.repo)GH.repo=o.repo; }
+      else { GH.enabled=false; GH.token=''; }
+    }catch(e){ GH.enabled=false; GH.token=''; }
+  },
+  save(o){ localStorage.setItem(this.KEY, JSON.stringify({token:o.token,owner:o.owner||GH.owner,repo:o.repo||GH.repo})); this.load(); },
+  get(){ try{return JSON.parse(localStorage.getItem(this.KEY)||'null');}catch(e){return null;} }
+};
+// ===== 云端数据加密（AES-GCM + PBKDF2）=====
+// 数据写入仓库前先加密，仓库里只存密文；密钥由用户在手机上设定的“同步口令”本地派生，绝不离开设备。
+const ENC={
+  _key:null,
+  async deriveKey(pass){
+    const enc=new TextEncoder();
+    const salt=enc.encode('mua-workbench-v1');
+    const base=await crypto.subtle.importKey('raw',enc.encode(pass),'PBKDF2',false,['deriveKey']);
+    this._key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:120000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+  },
+  async encrypt(obj){
+    if(!this._key) throw new Error('未设置同步口令');
+    const iv=crypto.getRandomValues(new Uint8Array(12));
+    const pt=new TextEncoder().encode(JSON.stringify(obj));
+    const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},this._key,pt);
+    return bytesToB64(iv)+':'+bytesToB64(new Uint8Array(ct));
+  },
+  async decrypt(blob){
+    if(!this._key) throw new Error('未设置同步口令');
+    const [ivB,ctB]=String(blob).split(':');
+    if(!ivB||!ctB) throw new Error('密文格式错误');
+    const iv=b64ToBytes(ivB), ct=b64ToBytes(ctB);
+    const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},this._key,ct);
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+};
+function bytesToB64(bytes){let s='';const c=0x8000;for(let i=0;i<bytes.length;i+=c){s+=String.fromCharCode.apply(null,bytes.subarray(i,i+c));}return btoa(s);}
+function b64ToBytes(b64){const s=atob(b64);const out=new Uint8Array(s.length);for(let i=0;i<s.length;i++)out[i]=s.charCodeAt(i);return out;}
+
+// 同步口令：派生密钥仅保存在本地内存，刷新页面后需重新输入；不写入仓库或网页以外的任何地方。
+let _keyPromise=null,_cloudOff=false,_lastPrompt=0;
+function ensureKey(){
+  if(!GH.enabled||_cloudOff) return Promise.resolve();
+  if(ENC._key) return Promise.resolve();
+  if(_keyPromise) return _keyPromise;
+  const now=Date.now();
+  if(now-_lastPrompt<60000) return Promise.resolve(); // 冷却，避免轮询时频繁弹窗
+  _lastPrompt=now;
+  _keyPromise=new Promise((resolve)=>{
+    openPassModal((pass)=>{
+      if(!pass){_keyPromise=null;_cloudOff=true;resolve();return;}
+      ENC.deriveKey(pass).then(()=>{_keyPromise=null;resolve();}).catch(()=>{_keyPromise=null;toast('口令设置失败');resolve();});
+    });
+  });
+  return _keyPromise;
+}
+function openPassModal(cb,err){
+  const m=$('#modalContent');
+  m.innerHTML=`<div class="modal-head"><div class="t">同步口令</div><button class="x" onclick="closePassModal()">✕</button></div>`
+    +`<div style="padding:14px 16px;font-size:13px;color:var(--ink-2);line-height:1.7">`
+    +(err?`<div style="color:#e23;margin-bottom:8px">${esc(err)}</div>`:'')
+    +`设置一个<b>同步口令</b>，用于加密云端数据。<br>两台手机请用<b>同一个口令</b>才能互相解密同步。<br>`
+    +`<span style="color:var(--ink-3)">口令只存在你手机上；忘记后云端数据将无法解密，但本机数据仍在、也可导出备份。</span>`
+    +`</div>`
+    +`<div style="padding:0 16px 12px"><input id="passInput" type="password" placeholder="输入同步口令" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:15px"></div>`
+    +`<div class="modal-foot"><button class="btn-ghost" onclick="closePassModal()">取消</button><button class="btn-primary" onclick="submitPass()">确定</button></div>`;
+  $('#modalMask').classList.add('show');
+  const inp=$('#passInput'); if(inp) inp.focus();
+  window.__passCb=cb;
+}
+function closePassModal(){$('#modalMask').classList.remove('show');const cb=window.__passCb;window.__passCb=null;if(cb){_keyPromise=null;_cloudOff=true;cb(null);}}
+function submitPass(){const v=$('#passInput')?$('#passInput').value:'';if(!v){toast('请输入口令');return;}const cb=window.__passCb;window.__passCb=null;$('#modalMask').classList.remove('show');if(cb)cb(v);}
+function resetPass(){ENC._key=null;_cloudOff=false;ensureKey().then(()=>{if(ENC._key){toast('同步口令已更新');syncPoll();}});}
+function openCloudSetup(){
+  const cur=CLOUD.get()||{};
+  const m=$('#modalContent');
+  m.innerHTML=`<div class="modal-head"><div class="t">连接云端同步</div><button class="x" onclick="closeModal()">✕</button></div>`
+    +`<div style="padding:14px 16px;font-size:13px;color:var(--ink-2);line-height:1.7">`
+    +`填入 GitHub 访问令牌（fine-grained，仅授权本仓库 Contents 读写）。令牌只保存在你本机浏览器，不会写进网页源码，也不会上传。<br>`
+    +`<span style="color:var(--ink-3)">用户名与仓库名已内置，通常无需修改。</span></div>`
+    +`<div style="padding:0 16px 8px"><input id="cloudToken" type="password" placeholder="GitHub 访问令牌（PAT）" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
+    +`<div style="padding:0 16px 10px;display:flex;gap:8px"><input id="cloudOwner" placeholder="用户名" value="${esc(cur.owner||'Sserena001210')}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"><input id="cloudRepo" placeholder="仓库名" value="${esc(cur.repo||'mua-workbench')}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
+    +`<div class="modal-foot"><button class="btn-ghost" onclick="closeModal()">取消</button><button class="btn-primary" onclick="submitCloudSetup()">保存并连接</button></div>`;
+  $('#modalMask').classList.add('show');
+  const inp=$('#cloudToken'); if(inp) inp.focus();
+}
+function submitCloudSetup(){
+  const tok=($('#cloudToken')?$('#cloudToken').value:'').trim();
+  const owner=($('#cloudOwner')?$('#cloudOwner').value:'').trim()||'Sserena001210';
+  const repo=($('#cloudRepo')?$('#cloudRepo').value:'').trim()||'mua-workbench';
+  if(!tok){toast('请填写 GitHub 令牌');return;}
+  CLOUD.save({token:tok,owner,repo});
+  $('#modalMask').classList.remove('show');
+  toast('已连接，正在同步…');
+  ENC._key=null; _cloudOff=false;
+  ensureKey().then(()=>{ if(ENC._key) syncPoll(); });
+}
+
+let _cloudSha=null;
+async function cloudGet(){
+  if(GH.enabled){
+    await ensureKey();
+    if(_cloudOff) throw new Error('云端已关闭');
+    const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token}});
+    if(r.status===404) return null;                 // 仓库里还没有数据文件
+    if(!r.ok) throw new Error('gh get '+r.status);
+    const j=await r.json();
+    // 仓库里只存密文，拉取后本地解密
+    let data;
+    try{ data=await ENC.decrypt(atob(j.content.replace(/\s/g,''))); }
+    catch(e){ ENC._key=null; throw new Error('解密失败：同步口令可能不正确'); }
+    return {sha:j.sha, data};
+  }else{
+    const res=await fetch('/api/data');
+    if(!res.ok) throw new Error('api get '+res.status);
+    return {data:await res.json()};
+  }
+}
+async function cloudPut(data, sha){
+  if(GH.enabled){
+    await ensureKey();
+    if(_cloudOff) throw new Error('云端已关闭');
+    const payload=await ENC.encrypt(data); // 加密后再上传，仓库只存密文
+    const body={message:'sync '+new Date().toISOString(), content:btoa(payload)};
+    if(sha) body.sha=sha;
+    const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(body)});
+    if(!r.ok) throw new Error('gh put '+r.status);
+    return (await r.json()).content.sha;
+  }else{
+    await fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    return null;
+  }
+}
+
+// 保存时与云端合并后写回（带简单节流，避免并发请求过多）
+let _pushing=false;
+async function syncPush(){
+  if(_pushing) return; _pushing=true;
+  try{
+    const c=await cloudGet();
+    if(c&&c.data&&cloudHasData(c.data)){ DB.data=mergeData(DB.data, c.data); _cloudSha=c.sha||_cloudSha; }
+  }catch(e){console.warn('拉取云端失败',e);}
+  try{
+    DB.data._syncTS=Date.now();
+    localStorage.setItem(DB._k,JSON.stringify(DB.data));
+    _cloudSha=await cloudPut(DB.data,_cloudSha);
+  }catch(e){console.warn('推送云端失败',e);}
+  _pushing=false;
+}
+
+// 后台轮询：近实时同步，无需手动刷新
+let _syncTimer=null;
+async function syncPoll(){
+  // 编辑弹窗打开时不打断用户
+  if(document.querySelector('.modal-mask.show')||document.querySelector('.quick-sheet')) return;
+  try{
+    const c=await cloudGet();
+    if(!c||!c.data||!cloudHasData(c.data)) return;
+    const before=JSON.stringify(DB.data);
+    DB.data=mergeData(DB.data, c.data);
+    _cloudSha=c.sha||_cloudSha;
+    DB.data._syncTS=Date.now();
+    try{localStorage.setItem(DB._k,JSON.stringify(DB.data));}catch(e){}
+    _cloudSha=await cloudPut(DB.data,_cloudSha);
+    if(JSON.stringify(DB.data)!==before){
+      if(currentView==='orders'&&ordersSubTab==='tx'){ const p=$('#ordersPanel'); if(p){p.innerHTML=viewTx();bindTx();} }
+      else { renderMain(); }
+      renderNav();renderTabbar();
+    }
+  }catch(e){console.warn('轮询同步失败',e);}
+}
+function startSync(){ if(_syncTimer) return; _syncTimer=setInterval(syncPoll, 6000); }
+async function manualSync(){ toast('同步中…'); await syncPoll(); toast('已同步'); }
+
+// 首屏：先与云端合并，再启动轮询
+(async function autoSync(){
+  CLOUD.load();
+  try{
+    const c=await cloudGet();
+    if(c&&c.data&&cloudHasData(c.data)){ DB.data=mergeData(DB.data, c.data); _cloudSha=c.sha||_cloudSha; try{localStorage.setItem(DB._k,JSON.stringify(DB.data));}catch(e){} }
+  }catch(e){console.warn('首屏拉取失败',e);}
+  try{
+    DB.data._syncTS=Date.now();
+    localStorage.setItem(DB._k,JSON.stringify(DB.data));
+    _cloudSha=await cloudPut(DB.data,_cloudSha);
+  }catch(e){console.warn('首屏推送失败',e);}
+  startSync();
+})();
+async function syncFromCloud(){
+  try{
+    const c=await cloudGet();
+    if(c&&c.data&&cloudHasData(c.data)){
+      DB.data=mergeData(DB.data, c.data);
+      _cloudSha=c.sha||_cloudSha;
+      DB.save();
+      _cloudSha=await cloudPut(DB.data,_cloudSha);
+      if(currentView==='orders'&&ordersSubTab==='tx'){ const p=$('#ordersPanel'); if(p){p.innerHTML=viewTx();bindTx();} }
+      else { renderMain(); }
+      renderNav();renderTabbar();
+      toast('云端数据已同步');
+    }
+  }catch(e){toast('同步失败');}
+}
+
+/* ============================================================
+   工具函数
+   ============================================================ */
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+const uid=()=>Date.now()+Math.floor(Math.random()*1000);
+const todayStr=()=>new Date().toISOString().slice(0,10);
+const money=n=>'¥'+Number(n||0).toLocaleString('zh-CN',{maximumFractionDigits:0});
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+function save(){DB.save();}
+
+/* 图标库 */
+const ICONS={
+  home:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l9-8 9 8v8a2 2 0 0 1-2 2h-4v-6h-6v6H5a2 2 0 0 1-2-2z"/></svg>',
+  orders:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  clients:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  inventory:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+  gallery:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+  xhs:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.5 3h-17A.5.5 0 0 0 3 3.5v17a.5.5 0 0 0 .5.5h17a.5.5 0 0 0 .5-.5v-17a.5.5 0 0 0-.5-.5z"/><path d="M8 8v8M8 12h4c1.5 0 2-1 2-2V8M16 8v8"/></svg>',
+  life:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+  inbox:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>',
+  edit:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  trash:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  plus:'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>',
+};
+
+const NAV_DEFS={
+  home:{label:'业务中枢',icon:ICONS.home},
+  booking:{label:'预约排单',icon:ICONS.orders},
+  tx:{label:'收支记账',icon:ICONS.inventory},
+  inventory:{label:'物料库存',icon:ICONS.inventory},
+  gallery:{label:'客片作品',icon:ICONS.gallery},
+  makeupTypes:{label:'妆容价目',icon:ICONS.gallery},
+};
+
+/* ============================================================
+   主框架逻辑
+   ============================================================ */
+let currentView='home';
+let ordersSubTab='booking';
+let bookingListFilter='';
+let txView='list';
+let txListFilter='';
+let txCalSel='';
+let invSearch='';
+
+let navEditMode=false;
+function getAllNav(){
+  return DB.data.nav;
+}
+function renderNav(){
+  const list=$('#navList');
+  list.innerHTML='';
+  getAllNav().forEach((key,idx)=>{
+    const def=NAV_DEFS[key]||DB.data.customNavDef&&DB.data.customNavDef[key];
+    if(!def) return;
+    const item=document.createElement('button');
+    item.className='nav-item'+(currentView===key?' active':'');
+    item.setAttribute('data-key',key);
+    item.innerHTML=def.icon+'<span>'+esc(def.label)+'</span>';
+    item.onclick=()=>switchView(key);
+    list.appendChild(item);
+  });
+  // 更新工作室名显示
+  const sd=$('#studioNameDisplay');
+  if(sd&&DB.data.studioName)sd.textContent=DB.data.studioName;
+}
+function openManageNavModal(){
+  const all=getAllNav();
+  openModal(`
+    <div class="modal-head"><div class="t">管理栏目</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">点击栏目名可重命名 · 拖拽可调整顺序</div>
+    <div id="manageNavList">
+      ${all.map((key,idx)=>{
+        const def=NAV_DEFS[key]||DB.data.customNavDef&&DB.data.customNavDef[key];
+        if(!def)return'';
+        return `<div class="list-item" draggable="true" data-key="${key}" data-idx="${idx}" style="cursor:grab">
+          <div class="top">
+            <span style="font-size:16px;margin-right:8px">${def.icon}</span>
+            <span class="nav-rename" style="font-size:14px;font-weight:500;cursor:text;border-bottom:2px solid transparent;padding:2px 4px;flex:1" contenteditable="false" data-key="${key}" onclick="startRenameNav(this)">${esc(def.label)}</span>
+          </div>
+          <div style="font-size:11px;color:var(--ink-3);cursor:pointer" onclick="finishRenameNav(event.target.closest('.list-item').querySelector('.nav-rename'))">✏️ 点击名称编辑</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn block" style="margin-top:12px" onclick="closeModal();renderNav();renderTabbar()">完成</button>
+  `);
+  // 绑定拖拽
+  setTimeout(()=>{
+    $$('#manageNavList .list-item').forEach((el,idx)=>{
+      el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',el.dataset.idx);el.style.opacity='0.5';});
+      el.addEventListener('dragend',e=>{el.style.opacity='1';});
+      el.addEventListener('dragover',e=>{e.preventDefault();el.style.background='var(--bg-2)';});
+      el.addEventListener('dragleave',e=>{el.style.background='';});
+      el.addEventListener('drop',e=>{
+        e.preventDefault();el.style.background='';
+        const from=+e.dataTransfer.getData('text/plain');
+        const to=+el.dataset.idx;
+        if(from===to)return;
+        const nav=DB.data.nav;
+        const moved=nav.splice(from,1)[0];
+        nav.splice(to,0,moved);
+        save();
+        openManageNavModal(); // 重新渲染弹窗
+      });
+    });
+  },100);
+}
+function startRenameNav(el){
+  if(el.contentEditable==='true')return;
+  el.contentEditable='true';el.style.borderBottomColor='var(--accent)';
+  el.focus();
+  const sel=window.getSelection();
+  if(sel)sel.selectAllChildren(el);
+}
+function finishRenameNav(el){
+  if(el.contentEditable!=='true')return;
+  el.contentEditable='false';el.style.borderBottomColor='transparent';
+  const newName=el.textContent.trim();
+  if(!newName)return;
+  const key=el.dataset.key;
+  if(NAV_DEFS[key]){NAV_DEFS[key].label=newName;}
+  else if(DB.data.customNavDef&&DB.data.customNavDef[key]){DB.data.customNavDef[key].label=newName;}
+  save();
+}
+function openBottomNavModal(){
+  const all=getAllNav();
+  const bottom=DB.data.bottomNav||[];
+  openModal(`
+    <div class="modal-head"><div class="t">设置底部导航（最多5个）</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">勾选要在底部导航栏显示的栏目</div>
+    <div id="bottomNavList">
+      ${all.map(key=>{
+        const def=NAV_DEFS[key]||DB.data.customNavDef&&DB.data.customNavDef[key];
+        if(!def)return'';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)" data-key="${key}">
+          <span class="chk ${bottom.includes(key)?'on':''}" onclick="toggleBottomNav('${key}')">${ICONS.check}</span>
+          <span style="flex:1;font-size:14px">${def.icon} ${esc(def.label)}</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn block" style="margin-top:12px" onclick="closeModal();renderTabbar()">完成</button>
+  `);
+}
+function toggleBottomNav(key){
+  if(!DB.data.bottomNav)DB.data.bottomNav=['home','booking','tx','inventory','gallery'];
+  const idx=DB.data.bottomNav.indexOf(key);
+  if(idx>=0){
+    DB.data.bottomNav.splice(idx,1);
+  }else{
+    if(DB.data.bottomNav.length>=5){toast('最多5个');return;}
+    DB.data.bottomNav.push(key);
+  }
+  save();
+  // 更新UI
+  const el=event.currentTarget;
+  el.classList.toggle('on');
+}
+function delNav(key){
+  if(!confirm('确认删除栏目「'+(NAV_DEFS[key]?NAV_DEFS[key].label:DB.data.customNavDef[key].label)+'」？'))return;
+  DB.data.nav=DB.data.nav.filter(k=>k!==key);
+  DB.data.customNav=DB.data.customNav.filter(k=>k!==key);
+  if(DB.data.customNavDef&&DB.data.customNavDef[key])delete DB.data.customNavDef[key];
+  save();
+  if(currentView===key)switchView('home');
+  renderNav();renderTabbar();
+  toast('已删除');
+}
+function editStudioName(){
+  const name=prompt('输入工作室名称：',DB.data.studioName||'');
+  if(name&&name.trim()){
+    DB.data.studioName=name.trim();
+    save();renderNav();renderMain();
+    toast('已修改');
+  }
+}
+const NAV_ICONS=[
+  {id:'home',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l9-8 9 8v8a2 2 0 0 1-2 2h-4v-6h-6v6H5a2 2 0 0 1-2-2z"/></svg>'},
+  {id:'orders',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'},
+  {id:'inventory',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>'},
+  {id:'gallery',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'},
+  {id:'xhs',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.5 3h-17A.5.5 0 0 0 3 3.5v17a.5.5 0 0 0 .5.5h17a.5.5 0 0 0 .5-.5v-17a.5.5 0 0 0-.5-.5z"/><path d="M8 8v8M8 12h4c1.5 0 2-1 2-2V8M16 8v8"/></svg>'},
+  {id:'life',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'},
+  {id:'star',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'},
+  {id:'briefcase',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>'},
+  {id:'gift',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>'},
+  {id:'camera',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'},
+  {id:'book',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'},
+  {id:'flag',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>'},
+];
+const EMOJI_LIST=['💄','🎨','📸','✨','🌸','💝','👑','💎','🔥','⭐','🌙','☀️','💋','👁️','💅','💇‍♀️','🧴','🧖‍♀️','🎀','🌹','🦋','🌈','📱','💡','📝','🎁','🎬','🎭','🎪','👗'];
+function openAddNavModal(){
+  openModal(`
+    <div class="modal-head"><div class="t">添加栏目</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>栏目名称</label><input id="nav_name" placeholder="如 美妆笔记" maxlength="8"></div>
+    <div class="field"><label>选择图标</label>
+      <div class="icon-picker" id="emojiPicker" style="grid-template-columns:repeat(8,1fr)">
+        ${EMOJI_LIST.map((em,i)=>`<div class="icon-opt emoji-opt ${i===0?'sel':''}" data-emoji="${em}" onclick="document.querySelectorAll('#emojiPicker .emoji-opt').forEach(o=>o.classList.remove('sel'));this.classList.add('sel')" style="font-size:18px">${em}</div>`).join('')}
+      </div>
+    </div>
+    <button class="btn block" onclick="saveAddNav()">添加</button>
+  `);
+}
+function saveAddNav(){
+  const name=$('#nav_name').value.trim();
+  if(!name){toast('请输入名称');return;}
+  const sel=document.querySelector('#iconPicker .icon-opt.sel, #emojiPicker .emoji-opt.sel');
+  let iconHtml='';
+  if(sel){
+    if(sel.dataset.emoji){
+      iconHtml='<span class="ico" style="font-size:18px">'+sel.dataset.emoji+'</span>';
+    }else{
+      const iconDef=NAV_ICONS.find(i=>i.id===sel.dataset.icon);
+      if(iconDef)iconHtml='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+iconDef.svg.replace(/<svg[^>]*>|<\/svg>/g,'')+'</svg>';
+    }
+  }
+  const key='custom_'+uid();
+  if(!DB.data.customNavDef)DB.data.customNavDef={};
+  DB.data.customNavDef[key]={label:name,icon:iconHtml||'<span class="ico">📌</span>'};
+  DB.data.nav.push(key);
+  save();closeModal();renderNav();renderTabbar();
+  toast('已添加栏目');
+}
+function renderTabbar(){
+  const bar=$('#tabbar');
+  bar.innerHTML='';
+  const tabs=(DB.data.bottomNav||['home','booking','tx','inventory','gallery']).slice(0,5);
+  tabs.forEach(key=>{
+    const def=NAV_DEFS[key]||DB.data.customNavDef&&DB.data.customNavDef[key];
+    if(!def) return;
+    const t=document.createElement('button');
+    t.className='tab-item'+(currentView===key?' active':'');
+    t.innerHTML=def.icon+'<span class="label">'+esc(def.label)+'</span>';
+    t.onclick=()=>switchView(key);
+    bar.appendChild(t);
+  });
+}
+function switchView(key){
+  currentView=key;
+  renderNav();
+  renderTabbar();
+  const def=NAV_DEFS[key];
+  $('#mobileTitle').textContent=def?def.label:'';
+  $('#sidebar').classList.remove('open');
+  $('#sidebarOverlay').classList.remove('show');
+  renderMain();
+  window.scrollTo(0,0);
+}
+function renderMain(){
+  const c=$('#mainInner');
+  switch(currentView){
+    case 'home':c.innerHTML=viewHome();bindHome();break;
+    case 'orders':c.innerHTML=viewBooking();bindBooking();break;
+    case 'booking':c.innerHTML=viewBooking();bindBooking();break;
+    case 'tx':c.innerHTML=viewTx();bindTx();break;
+    case 'inventory':c.innerHTML=viewInventory();bindInventory();break;
+    case 'gallery':c.innerHTML=viewGallery();bindGallery();break;
+    case 'makeupTypes':c.innerHTML=viewMakeupTypes();break;
+    default:c.innerHTML=viewHome();bindHome();
+  }
+}
+
+/* ============================================================
+   首页 - 业务中枢
+   ============================================================ */
+function viewHome(){
+  const d=DB.data;
+  const studioName=d.studioName||'我的工作室';
+  const pending=d.bookings.filter(b=>b.status!=='已完成'&&b.status!=='已取消').length;
+  const done=d.bookings.filter(b=>b.status==='已完成').length;
+  const pendingPay=d.bookings.filter(b=>b.status==='已完成').reduce((s,b)=>{
+    const paid=d.transactions.filter(t=>t.orderId===b.id&&t.type==='收入').reduce((x,t)=>x+t.amount,0);
+    return s+Math.max(0,b.total-paid);
+  },0);
+  const now=new Date();
+  const m=now.getMonth();
+  const monthInc=d.transactions.filter(t=>t.type==='收入'&&new Date(t.date).getMonth()===m).reduce((s,t)=>s+t.amount,0);
+  const monthExp=d.transactions.filter(t=>t.type==='支出'&&new Date(t.date).getMonth()===m).reduce((s,t)=>s+t.amount,0);
+  const profit=monthInc-monthExp;
+
+  // 库存不足商品
+  const lowStock=d.inventory.filter(i=>i.stock<=i.threshold);
+  // 当日待办
+  const ds=todayStr();
+  const todayTodos=d.bookings.filter(b=>b.date===ds).flatMap(b=>(b.todo||[]).map((t,i)=>({t,bId:b.id,idx:i,done:b.todoDone&&b.todoDone[i],client:b.client})));
+  // 当日预约
+  const todayBookings=d.bookings.filter(b=>b.date===ds);
+
+  return `
+  <div class="page-title">${esc(studioName)}</div>
+  <div class="page-desc">${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 · 业务概览</div>
+  
+  <div class="stat-grid">
+    <div class="stat-card" style="cursor:pointer" onclick="bookingListFilter='已定金';calView='list';switchView('booking')">
+      <div class="label">待处理预约</div>
+      <div class="num">${pending}</div>
+      <div class="sub">待处理订单 →</div>
+    </div>
+    <div class="stat-card" style="cursor:pointer" onclick="bookingListFilter='已完成';calView='list';switchView('booking')">
+      <div class="label">已完成订单</div>
+      <div class="num" style="color:var(--income)">${done}</div>
+      <div class="sub">累计完成 →</div>
+    </div>
+    <div class="stat-card" style="cursor:pointer" onclick="switchView('tx')">
+      <div class="label">待收款</div>
+      <div class="num" style="color:var(--warn)">${money(pendingPay)}</div>
+      <div class="sub">已完成未结清 →</div>
+    </div>
+    <div class="stat-card" style="cursor:pointer" onclick="switchView('tx')">
+      <div class="label">本月净利润</div>
+      <div class="num" style="color:var(--accent)">${money(profit)}</div>
+      <div class="sub">收入${money(monthInc)} · 支出${money(monthExp)} →</div>
+    </div>
+  </div>
+
+  ${lowStock.length?`
+  <div class="card" style="margin-top:12px;background:rgba(255,71,87,.06);border:1px solid rgba(255,71,87,.2)">
+    <div class="section-title" style="color:var(--expense)"><span class="dot" style="background:var(--expense)"></span>库存不足提醒</div>
+    ${lowStock.map(i=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="switchView('inventory')">
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:var(--ink)">${esc(i.name)} ${esc(i.shade)}</div>
+        <div style="font-size:12px;color:var(--expense)">仅剩 ${i.stock} ${esc(i.unit)}（阈值${i.threshold}${esc(i.unit)}）</div>
+      </div>
+      <span style="color:var(--expense);font-size:18px">→</span>
+    </div>`).join('')}
+    <div style="font-size:11px;color:var(--ink-3);margin-top:6px">点击商品跳转到物料库存</div>
+  </div>`:''}
+
+  ${todayBookings.length||todayTodos.length?`
+  <div class="card" style="margin-top:12px">
+    <div class="section-title"><span class="dot" style="background:var(--info)"></span>今日安排</div>
+    ${todayBookings.length?todayBookings.map(b=>`
+      <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">
+        <div style="width:50px;font-size:12px;color:var(--accent);font-weight:600">${b.start}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">${esc(b.client)} · ${esc(b.type)}</div>
+          <div style="font-size:12px;color:var(--ink-3)">${esc(addrText(b.addr))||'无地址'}</div>
+        </div>
+        <div class="status-sel-wrap" id="homeStatus_${b.id}"></div>
+      </div>
+    `).join(''):'<div class="empty" style="padding:12px">今日无预约</div>'}
+    ${todayTodos.length?`
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line)">
+      <div style="font-size:13px;font-weight:600;color:var(--warn);margin-bottom:6px">📋 当日临时待办</div>
+      ${todayTodos.map(td=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+          <span class="chk ${td.done?'on':''}" onclick="toggleTodo(${td.bId},${td.idx},event)">${ICONS.check}</span>
+          <span style="flex:1;font-size:13px;${td.done?'color:var(--ink-3);text-decoration:line-through':''}">${esc(td.t)}</span>
+          <span style="font-size:11px;color:var(--ink-3)">${esc(td.client)}</span>
+        </div>
+      `).join('')}
+    </div>`:''}
+  </div>`:''}
+
+  <div class="card" style="margin-top:12px">
+    <div class="section-title"><span class="dot"></span>近期日程</div>
+    ${upcomingBookings()}
+  </div>
+
+  <div class="card">
+    <div class="section-title"><span class="dot"></span>快捷操作</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+      <button class="btn ghost sm" onclick="openBookingModal()">新建预约</button>
+      <button class="btn ghost sm" onclick="openTxModal()">记一笔收支</button>
+      <button class="btn ghost sm" onclick="openQuickSheet()">快速录入</button>
+      <button class="btn ghost sm" onclick="switchView('gallery')">上传客片</button>
+    </div>
+  </div>
+  `;
+}
+function setBookingStatus(id,newStatus){
+  const b=DB.data.bookings.find(x=>x.id===id);
+  if(!b)return;
+  const oldStatus=b.status;
+  if(oldStatus===newStatus)return;
+  b.status=newStatus;
+  // 如果改为已完成，自动记录尾款收支
+  if(newStatus==='已完成'){
+    const paid=DB.data.transactions.filter(t=>t.orderId===b.id&&t.type==='收入').reduce((s,t)=>s+t.amount,0);
+    const remain=b.total-paid;
+    if(remain>0){
+      DB.data.transactions.push({id:uid(),date:todayStr(),orderId:b.id,type:'收入',amount:remain,incCat:'尾款',expCat:'',note:esc(b.client)+' '+esc(b.type)+' 尾款'});
+      toast('已完成，尾款'+money(remain)+'已自动记录');
+    }else{
+      toast('状态：已完成');
+    }
+  }else{
+    toast('状态：'+b.status);
+  }
+  save();
+  // 就地刷新，不跳转
+  if(currentView==='booking'){rerenderBooking();}
+  else{renderMain();}
+}
+// 生成预约状态下拉选择器
+function bookingStatusSelect(b){
+  const colors={已定金:'gold',已完成:'green',已取消:'red'};
+  const sel=document.createElement('select');
+  sel.className='status-sel '+colors[b.status]||'';
+  ['已定金','已完成','已取消'].forEach(s=>{
+    const o=document.createElement('option');
+    o.value=s;o.textContent=s;
+    if(b.status===s)o.selected=true;
+    sel.appendChild(o);
+  });
+  sel.onchange=function(e){
+    e.stopPropagation();
+    setBookingStatus(b.id,this.value);
+  };
+  sel.onclick=function(e){e.stopPropagation();};
+  return sel;
+}
+function upcomingBookings(){
+  const list=DB.data.bookings.filter(b=>b.status!=='已完成').sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+  if(!list.length) return '<div class="empty" style="padding:20px">暂无近期预约</div>';
+  return list.map(b=>`
+    <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)">
+      <div style="width:44px;text-align:center;flex-shrink:0">
+        <div style="font-size:11px;color:var(--accent)">${b.date.slice(5,7)}月</div>
+        <div style="font-size:18px;font-weight:700">${b.date.slice(8,10)}</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px">${esc(b.client)} · ${esc(b.type)}</div>
+        <div style="font-size:12px;color:var(--ink-3);margin-top:2px">${b.start}-${b.end} · ${esc(addrText(b.addr))}</div>
+      </div>
+      <div class="status-sel-wrap" id="upcomingStatus_${b.id}"></div>
+    </div>
+  `).join('');
+}
+function bindHome(){
+  // 为首页今日安排中的预约插入状态下拉选择器
+  DB.data.bookings.filter(b=>b.date===todayStr()).forEach(b=>{
+    const wrap=document.getElementById('homeStatus_'+b.id);
+    if(wrap){
+      const sel=bookingStatusSelect(b);
+      wrap.appendChild(sel);
+    }
+  });
+  // 为近期日程中的预约插入状态下拉选择器
+  DB.data.bookings.filter(b=>b.status!=='已完成').sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3).forEach(b=>{
+    const wrap=document.getElementById('upcomingStatus_'+b.id);
+    if(wrap){
+      const sel=bookingStatusSelect(b);
+      wrap.appendChild(sel);
+    }
+  });
+}
+
+/* ============================================================
+   接单业务
+   ============================================================ */
+function viewOrders(){
+  return `
+  <div class="page-title">接单业务</div>
+  <div class="page-desc">预约排单与收支记账</div>
+  <div class="tabs">
+    <div class="tab ${ordersSubTab==='booking'?'active':''}" onclick="setOrdersTab('booking')">预约排单</div>
+    <div class="tab ${ordersSubTab==='tx'?'active':''}" onclick="setOrdersTab('tx')">收支记账</div>
+  </div>
+  <div id="ordersPanel"></div>
+  `;
+}
+function setOrdersTab(t){ordersSubTab=t;$('#ordersPanel').innerHTML=t==='booking'?viewBooking():viewTx();if(t==='booking')bindBooking();else bindTx();}
+function bindOrders(){setOrdersTab(ordersSubTab);}
+
+/* ---- 预约排单 ---- */
+let calDate=new Date();
+let calView='calendar';
+function viewBooking(){
+  const d=DB.data;
+  return `
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+    <div class="page-title" style="margin-bottom:0;flex:1">预约排单</div>
+    <button class="btn ghost sm" style="font-size:18px;padding:4px 8px" onclick="openMakeupTypeManager()" title="管理妆容品类">⚙️</button>
+    <button class="btn ghost sm" onclick="openBookingModal()">+ 新建</button>
+    <button id="bkCalBtn" class="btn ghost sm ${calView==='calendar'?'active':''}" onclick="calView='calendar';rerenderBooking()">📅</button>
+    <button id="bkListBtn" class="btn ghost sm ${calView==='list'?'active':''}" onclick="calView='list';rerenderBooking()">📋</button>
+  </div>
+  <div id="bookingBox">${calView==='calendar'?calViewHTML():listViewHTML()}</div>
+  `;
+}
+function rerenderBooking(){$('#bookingBox').innerHTML=calView==='calendar'?calViewHTML():listViewHTML();const c=$('#bkCalBtn'),l=$('#bkListBtn');if(c)c.classList.toggle('active',calView==='calendar');if(l)l.classList.toggle('active',calView==='list');bindBooking();}
+function bindBooking(){
+  // 绑定日历按钮
+  $$('#bookingBox [data-cal-nav]').forEach(b=>b.onclick=()=>{
+    const dir=+b.dataset.calNav;
+    calDate.setMonth(calDate.getMonth()+dir);
+    rerenderBooking();
+  });
+  $$('#bookingBox [data-day]').forEach(b=>b.onclick=()=>{
+    const ds=b.dataset.day;
+    showDayDetail(ds);
+  });
+  // 绑定日历详情和列表中的状态下拉选择器
+  $$('#bookingBox .status-sel-wrap').forEach(wrap=>{
+    const id=wrap.id;
+    const mDay=id.match(/^dayStatus_(\d+)_(\d{8})$/);
+    const mList=id.match(/^listStatus_(\d+)$/);
+    if(mDay){
+      const bId=+mDay[1];
+      const b=DB.data.bookings.find(x=>x.id===bId);
+      if(b){
+        const sel=bookingStatusSelect(b);
+        wrap.appendChild(sel);
+      }
+    }else if(mList){
+      const bId=+mList[1];
+      const b=DB.data.bookings.find(x=>x.id===bId);
+      if(b){
+        const sel=bookingStatusSelect(b);
+        wrap.appendChild(sel);
+      }
+    }
+  });
+}
+function calViewHTML(){
+  const y=calDate.getFullYear(),m=calDate.getMonth();
+  const first=new Date(y,m,1);const firstDow=first.getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const dows=['日','一','二','三','四','五','六'];
+  const ds=new Date().toISOString().slice(0,10);
+  let cells='';
+  for(let i=0;i<firstDow;i++)cells+=`<div class="cal-day other"></div>`;
+  for(let i=1;i<=days;i++){
+    const dd=String(i).padStart(2,'0');
+    const mms=String(m+1).padStart(2,'0');
+    const ds2=`${y}-${mms}-${dd}`;
+    const has=DB.data.bookings.some(b=>b.date===ds2);
+    const cls=(ds===ds2?' today':'')+(has?' has-event':'');
+    cells+=`<div class="cal-day${cls}" data-day="${ds2}">${i}</div>`;
+  }
+  return `
+  <div class="card">
+    <div class="cal-head">
+      <button class="cal-nav" data-cal-nav="-1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="ym">${y}年${m+1}月</div>
+      <button class="cal-nav" data-cal-nav="1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+    <div class="cal-grid">
+      ${dows.map(d=>`<div class="cal-dow">${d}</div>`).join('')}
+      ${cells}
+    </div>
+    <div style="font-size:11px;color:var(--ink-3);margin-top:10px;text-align:center">点击日期查看当日预约与待办</div>
+  </div>
+  ${dayDetailHTML(ds)}
+  `;
+}
+function dayDetailHTML(ds){
+  const list=DB.data.bookings.filter(b=>b.date===ds);
+  let html='<div class="card" style="margin-top:12px"><div class="section-title"><span class="dot"></span>'+ds.slice(5).replace('-','/')+' 预约</div>';
+  if(!list.length){html+='<div class="empty" style="padding:16px">当日无预约</div>';}
+  else{
+    list.forEach(b=>{
+      html+=`<div class="list-item" style="box-shadow:none;background:var(--bg-2)">
+        <div class="top">
+          <div>
+            <div class="name">${esc(b.client)} · ${esc(b.type)}</div>
+            <div class="meta">${b.start}-${b.end} · ${esc(addrText(b.addr))} · ${esc(b.phone)}</div>
+          </div>
+          <div class="status-sel-wrap" id="dayStatus_${b.id}_${ds.replace(/-/g,'')}"></div>
+        </div>
+        <div style="font-size:12px;color:var(--ink-3);margin-top:6px">定金${money(b.deposit)} · 全款${money(b.total)}</div>
+        <div class="actions">
+          <button class="btn ghost sm" onclick="openBookingDetail(${b.id})">查看</button>
+          <button class="btn ghost sm" onclick="editBooking(${b.id})">编辑</button>
+          <button class="btn danger sm" onclick="delBooking(${b.id})">删除</button>
+        </div>
+      </div>`;
+    });
+  }
+  html+='</div>';
+  // 当日待办
+  const todos=list.flatMap(b=>(b.todo||[]).map((t,i)=>({t,bId:b.id,idx:i,done:b.todoDone&&b.todoDone[i]})));
+  html+='<div class="card"><div class="section-title"><span class="dot" style="background:var(--warn)"></span>当日临时待办</div>';
+  if(!todos.length){html+='<div class="empty" style="padding:12px">暂无待办</div>';}
+  else{
+    todos.forEach(td=>{
+      html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">
+        <span class="chk ${td.done?'on':''}" onclick="toggleTodo(${td.bId},${td.idx},event)">${ICONS.check}</span>
+        <span style="flex:1;font-size:13px;${td.done?'color:var(--ink-3);text-decoration:line-through':''}">${esc(td.t)}</span>
+        <span style="font-size:11px;color:var(--ink-3)">${esc(DB.data.bookings.find(b=>b.id===td.bId).client)}</span>
+      </div>`;
+    });
+  }
+  html+='</div>';
+  return html;
+}
+function showDayDetail(ds){
+  // 渲染日历 + 当日详情
+  const y=calDate.getFullYear(),m=calDate.getMonth();
+  const first=new Date(y,m,1);const firstDow=first.getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const dows=['日','一','二','三','四','五','六'];
+  const todayDs=new Date().toISOString().slice(0,10);
+  let cells='';
+  for(let i=0;i<firstDow;i++)cells+=`<div class="cal-day other"></div>`;
+  for(let i=1;i<=days;i++){
+    const dd=String(i).padStart(2,'0');
+    const mms=String(m+1).padStart(2,'0');
+    const ds2=`${y}-${mms}-${dd}`;
+    const has=DB.data.bookings.some(b=>b.date===ds2);
+    const cls=(todayDs===ds2?' today':'')+(has?' has-event':'')+(ds===ds2?' selected':'');
+    cells+=`<div class="cal-day${cls}" data-day="${ds2}">${i}</div>`;
+  }
+  $('#bookingBox').innerHTML=`
+    <div class="card">
+      <div class="cal-head">
+        <button class="cal-nav" data-cal-nav="-1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <div class="ym">${y}年${m+1}月</div>
+        <button class="cal-nav" data-cal-nav="1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>
+      <div class="cal-grid">${dows.map(d=>`<div class="cal-dow">${d}</div>`).join('')}${cells}</div>
+    </div>
+    ${dayDetailHTML(ds)}
+  `;
+  bindBooking();
+}
+function toggleTodo(bId,idx,e){
+  if(e){e.stopPropagation();e.preventDefault();}
+  const b=DB.data.bookings.find(x=>x.id===bId);
+  if(!b.todoDone)b.todoDone={};
+  b.todoDone[idx]=!b.todoDone[idx];
+  save();
+  // 局部更新，不重新渲染整个视图
+  const chk=e?e.target.closest('.chk')||e.currentTarget:null;
+  if(chk){
+    chk.classList.toggle('on',b.todoDone[idx]);
+    const label=chk.nextElementSibling;
+    if(label){
+      if(b.todoDone[idx]){label.style.color='var(--ink-3)';label.style.textDecoration='line-through';}
+      else{label.style.color='';label.style.textDecoration='';}
+    }
+  }
+}
+function listViewHTML(){
+  let list=[...DB.data.bookings].sort((a,b)=>a.date.localeCompare(b.date));
+  // 应用筛选
+  if(bookingListFilter){list=list.filter(b=>b.status===bookingListFilter);}
+  // 生成列表HTML（在模板外构建避免嵌套模板语法冲突）
+  var listHtml='';
+  if(!list.length){listHtml='<div class="empty">暂无预约</div>';}
+  else {
+    list.forEach(function(b){
+      listHtml+='<div class="list-item">';
+      listHtml+='<div class="top"><div>';
+      listHtml+='<div class="name">'+esc(b.client)+' · '+esc(b.type)+'</div>';
+      listHtml+='<div class="meta">'+b.date+' '+b.start+'-'+b.end+' · '+esc(addrText(b.addr))+'</div>';
+      listHtml+='<div class="meta">'+esc(b.phone)+' · 定金'+money(b.deposit)+' · 全款'+money(b.total)+'</div>';
+      listHtml+='</div><div class="status-sel-wrap" id="listStatus_'+b.id+'"></div></div>';
+      if(b.imgs&&b.imgs.length){
+        listHtml+='<div class="img-grid" style="margin-top:8px">';
+        b.imgs.forEach(function(src,i){
+          listHtml+='<div class="img-cell" onclick="viewBookingImg('+b.id+','+i+')"><img src="'+esc(src)+'"></div>';
+        });
+        listHtml+='</div>';
+      }
+      if(b.todo&&b.todo.length){
+        listHtml+='<div style="font-size:12px;color:var(--ink-2);margin-top:6px">待办：';
+        listHtml+=b.todo.map(function(t,i){return (b.todoDone&&b.todoDone[i]?'✓':'')+t;}).join(' · ');
+        listHtml+='</div>';
+      }
+      listHtml+='<div class="actions">';
+      listHtml+='<button class="btn ghost sm" onclick="openBookingDetail('+b.id+')">查看</button>';
+      listHtml+='<button class="btn ghost sm" onclick="editBooking('+b.id+')">编辑</button>';
+      listHtml+='<button class="btn danger sm" onclick="delBooking('+b.id+')">删除</button>';
+      listHtml+='</div></div>';
+    });
+  }
+  return '<div class="filter-bar" style="margin-bottom:12px">'
+    +'<div class="filter-chip '+(bookingListFilter?'':'active')+'" onclick="bookingListFilter=\'\';rerenderBooking()">全部</div>'
+    +'<div class="filter-chip '+(bookingListFilter==='已定金'?'active':'')+'" onclick="bookingListFilter=bookingListFilter===\'已定金\'?\'\':\'已定金\';rerenderBooking()">已定金</div>'
+    +'<div class="filter-chip '+(bookingListFilter==='已完成'?'active':'')+'" onclick="bookingListFilter=bookingListFilter===\'已完成\'?\'\':\'已完成\';rerenderBooking()">已完成</div>'
+    +'<div class="filter-chip '+(bookingListFilter==='已取消'?'active':'')+'" onclick="bookingListFilter=bookingListFilter===\'已取消\'?\'\':\'已取消\';rerenderBooking()">已取消</div>'
+    +'</div>'
+    +listHtml;
+}
+function viewBookingImg(bid,idx){
+  const b=DB.data.bookings.find(x=>x.id===bid);
+  if(!b||!b.imgs||!b.imgs.length)return;
+  const imgs=b.imgs;
+  openModal(`
+    <div class="modal-head"><div class="t">${esc(b.client)} · ${esc(b.type)} (${idx+1}/${imgs.length})</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div style="text-align:center">
+      <img src="${esc(imgs[idx])}" style="width:100%;border-radius:var(--radius-sm);max-height:60vh;object-fit:contain">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      ${idx>0?`<button class="btn ghost sm" onclick="viewBookingImg(${bid},${idx-1})">上一张</button>`:''}
+      ${idx<imgs.length-1?`<button class="btn ghost sm" onclick="viewBookingImg(${bid},${idx+1})" style="margin-left:auto">下一张</button>`:''}
+    </div>
+    <button class="btn ghost sm block" style="margin-top:8px" onclick="closeModal();editBooking(${bid})">编辑预约</button>
+  `);
+}
+function openBookingModal(id){
+  const b=id?DB.data.bookings.find(x=>x.id===id):{date:todayStr(),start:'09:00',end:'12:00',client:'',phone:'',type:'',addr:'',deposit:0,total:0,status:'已定金',todo:[]};
+  window._bookingLoc=(b.addr&&typeof b.addr==='object'&&b.addr.lat!=null)?{text:b.addr.text,lat:b.addr.lat,lng:b.addr.lng}:null;
+  openModal(`
+    <div class="modal-head"><div class="t">${id?'编辑预约':'新建预约'}</div><button class="x" onclick="closeModal()">✕</button></div>
+    ${id?'':`
+    <div class="ai-ocr-box">
+      <div class="ai-ocr-head">
+        <span class="ai-badge">🤖 AI识别</span>
+        <span style="font-size:12px;color:var(--ink-3)">粘贴微信聊天截图，自动识别预约信息</span>
+      </div>
+      <div class="ai-ocr-drop" id="ocrDrop">
+        <div id="ocrPreview" style="display:none"></div>
+        <div id="ocrPlaceholder">
+          <div style="font-size:28px;margin-bottom:6px">📸</div>
+          <div style="font-size:13px;font-weight:600;color:var(--ink-2)">点击上传 / 粘贴截图</div>
+          <div style="font-size:11px;color:var(--ink-3);margin-top:4px">支持微信聊天截图、私信截图</div>
+        </div>
+      </div>
+      <input type="file" id="ocrFile" accept="image/*" style="display:none">
+      <button class="btn block sm" id="ocrBtn" onclick="startOCR()" style="margin-top:8px;background:linear-gradient(135deg,var(--purple),var(--accent));display:none">🤖 开始AI识别</button>
+      <div id="ocrLoading" style="display:none;text-align:center;padding:12px">
+        <div style="font-size:13px;color:var(--purple);font-weight:600">⏳ AI正在识别中...</div>
+      </div>
+    </div>
+    <div style="height:8px"></div>
+    `}
+    <div class="field"><label>预约日期</label><input type="date" id="b_date" value="${b.date}"></div>
+    <div class="row">
+      <div class="field"><label>开始时间</label><input type="time" id="b_start" value="${b.start}"></div>
+      <div class="field"><label>结束时间</label><input type="time" id="b_end" value="${b.end}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>客户姓名</label><input id="b_client" value="${esc(b.client)}" placeholder="客户姓名"></div>
+      <div class="field"><label>联系方式</label><input id="b_phone" value="${esc(b.phone)}" placeholder="电话/微信"></div>
+    </div>
+    <div class="field"><label>妆容类型</label>
+      <select id="b_type" onchange="onMakeupTypeChange()">
+        <option value="">请选择</option>
+        ${(DB.data.makeupTypes||[]).map(t=>`<option value="${esc(t.name)}" ${b.type===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>上门地址</label>
+      <input id="b_addr" value="${esc(addrText(b.addr))}" placeholder="输入或搜索地点">
+      <button type="button" class="btn ghost sm" style="margin-top:6px" onclick="toggleAddrSearch()">🔍 在地图中搜索</button>
+      <div id="addrSearchWrap" style="display:none;margin-top:8px">
+        <input id="addrSearch" placeholder="搜索地点，如：杭州西湖区文三路" style="margin-bottom:6px">
+        <div id="addrResults"></div>
+      </div>
+      <div id="addrPicked" style="font-size:12px;color:var(--ink-3);margin-top:6px"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>定金</label><input type="number" id="b_deposit" value="${b.deposit}"></div>
+      <div class="field"><label>全款</label><input type="number" id="b_total" value="${b.total}"></div>
+    </div>
+    <div class="field"><label>预约状态</label>
+      <select id="b_status">
+        <option ${b.status==='已定金'?'selected':''}>已定金</option>
+        <option ${b.status==='已完成'?'selected':''}>已完成</option>
+        <option ${b.status==='已取消'?'selected':''}>已取消</option>
+      </select>
+    </div>
+    <div class="field"><label>预约相关图片（效果图/参考图，可多选）</label>
+      <div class="img-grid" id="b_existingImgs">
+        ${(b.imgs||[]).map((src,i)=>`<div class="img-cell" style="position:relative;cursor:pointer" onclick="removeBookingImg(${i})"><img src="${esc(src)}"><div style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(255,71,87,.9);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">×</div></div>`).join('')}
+      </div>
+      <input type="file" id="b_files" accept="image/*" multiple style="margin-top:8px">
+      <div class="img-grid" id="b_preview" style="margin-top:8px"></div>
+    </div>
+    <div class="field"><label>当日待办（每行一条）</label><textarea id="b_todo" placeholder="试妆沟通&#10;准备头饰">${(b.todo||[]).join('\n')}</textarea></div>
+    <button class="btn block" onclick="saveBooking(${id||0})">保存</button>
+  `);
+  if(!id)initOCR();
+  const se=$('#addrSearch'); if(se){let _t; se.oninput=()=>{clearTimeout(_t);_t=setTimeout(()=>{if(se.value.trim().length>=2)doAddrSearch(se.value.trim());},400);};}
+  if(window._bookingLoc){const pe=$('#addrPicked'); if(pe)pe.textContent='已选位置：'+window._bookingLoc.text;}
+  // 预约图片
+  window._removedBookingImgs=[];
+  window.removeBookingImg=function(i){
+    window._removedBookingImgs.push(i);
+    const cells=document.querySelectorAll('#b_existingImgs .img-cell');
+    if(cells[i])cells[i].style.display='none';
+  };
+  $('#b_files').onchange=function(){
+    const pv=$('#b_preview');pv.innerHTML='';
+    Array.from(this.files).forEach(f=>{
+      const r=new FileReader();
+      r.onload=e=>{const d=document.createElement('div');d.className='img-cell';d.innerHTML='<img src="'+e.target.result+'">';pv.appendChild(d);};
+      r.readAsDataURL(f);
+    });
+  };
+}
+/* ---- AI 图片识别 ---- */
+let ocrImgData=null;
+function initOCR(){
+  const drop=$('#ocrDrop');
+  const fileInput=$('#ocrFile');
+  // 点击上传
+  drop.onclick=()=>fileInput.click();
+  fileInput.onchange=e=>{
+    const f=e.target.files[0];
+    if(f)loadOCRImage(f);
+  };
+  // 粘贴
+  document.addEventListener('paste',onPasteOCR);
+}
+function onPasteOCR(e){
+  if(!$('#ocrDrop'))return;
+  const items=e.clipboardData.items;
+  for(let item of items){
+    if(item.type.startsWith('image/')){
+      const f=item.getAsFile();
+      if(f)loadOCRImage(f);
+      e.preventDefault();
+      break;
+    }
+  }
+}
+function loadOCRImage(file){
+  const r=new FileReader();
+  r.onload=e=>{
+    ocrImgData=e.target.result;
+    $('#ocrPreview').innerHTML='<img src="'+ocrImgData+'" style="width:100%;border-radius:8px;max-height:200px;object-fit:cover">';
+    $('#ocrPreview').style.display='block';
+    $('#ocrPlaceholder').style.display='none';
+    $('#ocrBtn').style.display='flex';
+  };
+  r.readAsDataURL(file);
+}
+async function startOCR(){
+  if(!ocrImgData){toast('请先上传截图');return;}
+  $('#ocrBtn').style.display='none';
+  $('#ocrLoading').style.display='block';
+  try{
+    // 动态加载 Tesseract.js
+    if(!window.Tesseract){
+      await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+    }
+    const{data}=await Tesseract.recognize(ocrImgData,'chi_sim+eng',{
+      logger:m=>{if(m.status==='recognizing text'){$('#ocrLoading').innerHTML='<div style="font-size:13px;color:var(--purple);font-weight:600">⏳ 识别中 '+Math.round(m.progress*100)+'%</div>';}}
+    });
+    const text=data.text;
+    $('#ocrLoading').style.display='none';
+    $('#ocrBtn').style.display='flex';
+    // 展示识别结果并自动填充
+    parseOCRResult(text);
+  }catch(err){
+    // 降级：用云端AI视觉识别
+    $('#ocrLoading').innerHTML='<div style="font-size:13px;color:var(--purple);font-weight:600">⏳ 正在调用AI视觉识别...</div>';
+    try{
+      const result=await aiVisionOCR(ocrImgData);
+      $('#ocrLoading').style.display='none';
+      $('#ocrBtn').style.display='flex';
+      parseOCRResult(result);
+    }catch(e2){
+      $('#ocrLoading').style.display='none';
+      $('#ocrBtn').style.display='flex';
+      toast('识别失败，请手动填写');
+    }
+  }
+}
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src=src;s.onload=res;s.onerror=rej;
+    document.head.appendChild(s);
+  });
+}
+async function aiVisionOCR(imgData){
+  // 调用本地代理AI视觉识别接口
+  const resp=await fetch('https://d755df89ffeefd4d-120-53-27-226.serveousercontent.com/api/ocr',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({image:imgData})
+  });
+  if(!resp.ok)throw new Error('AI识别失败');
+  const data=await resp.json();
+  return data.text||'';
+}
+function parseOCRResult(text){
+  // 智能提取预约信息
+  const orig=text;
+  // 日期：X月X日 / X-X / XXXX-XX-XX
+  const dateM=text.match(/(\d{1,2})月(\d{1,2})[日号]/)||text.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)||text.match(/(\d{1,2})[\/.](\d{1,2})/);
+  let date=todayStr();
+  const now=new Date();
+  if(dateM){
+    if(dateM.length===4&&dateM[1].length===4){
+      date=`${dateM[1]}-${String(+dateM[2]).padStart(2,'0')}-${String(+dateM[3]).padStart(2,'0')}`;
+    }else{
+      date=`${now.getFullYear()}-${String(+dateM[1]).padStart(2,'0')}-${String(+dateM[2]).padStart(2,'0')}`;
+    }
+  }
+  if(/明天/.test(text)){const d=new Date(now);d.setDate(now.getDate()+1);date=d.toISOString().slice(0,10);}
+  if(/后天/.test(text)){const d=new Date(now);d.setDate(now.getDate()+2);date=d.toISOString().slice(0,10);}
+  // 时间：支持上下午
+  const ampmM=text.match(/[上下]午\s*(\d{1,2})\s*[点时:：]?(\d{0,2})/)||text.match(/(\d{1,2})\s*[点时:：](\d{0,2})/);
+  let start='09:00';
+  if(ampmM){
+    let h=+ampmM[1],m=(ampmM[2]&&ampmM[2].length===2)?ampmM[2]:'00';
+    if(/下午/.test(text)&&h<12)h+=12;
+    if(/上午/.test(text)&&h===12)h=0;
+    start=`${String(h).padStart(2,'0')}:${m}`;
+  }
+  // 电话
+  const phoneM=text.match(/1\d{10}/);
+  // 客户名
+  const textForName=text.replace(/\d{1,2}\s*[点时]\s*/g,'').replace(/[上下]午\s*/g,'').replace(/\d{1,2}[日号]\s*/g,'').replace(/[今明后]天\s*/g,'').replace(/\d+月\s*/g,'');
+  const nameM=textForName.match(/([\u4e00-\u9fa5]{1,3}(?:小姐|女士|先生))/);
+  // 妆容类型
+  let type='';
+  if(/新娘/.test(text))type='新娘妆';
+  else if(/年会/.test(text))type='年会妆';
+  else if(/约会/.test(text))type='约会妆';
+  else if(/舞台/.test(text))type='舞台妆';
+  else if(/写真/.test(text))type='写真妆';
+  else if(/日常/.test(text))type='日常妆';
+  // 地址
+  const addrM=text.match(/地址[：:\s是为]*([\u4e00-\u9fa5\w\d路街号大厦小区弄栋单元室]+)/);
+  // 金额
+  const depositM=text.match(/定金[：:\s]*(\d+)/)||text.match(/(\d+)\s*[元块]\s*定金/);
+  const totalM=text.match(/全款[：:\s]*(\d+)/)||text.match(/尾款[：:\s]*(\d+)/)||text.match(/价格[：:\s]*(\d+)/);
+  // 微信号
+  const wxM=text.match(/微信[：:\s]*([\w\-]+)/);
+
+  // 自动填入
+  if(dateM||/明天|后天|今天/.test(text))$('#b_date').value=date;
+  if(ampmM)$('#b_start').value=start;
+  if(nameM)$('#b_client').value=nameM[1];
+  if(phoneM)$('#b_phone').value=phoneM[0];
+  else if(wxM)$('#b_phone').value=wxM[1];
+  if(type)$('#b_type').value=type;
+  if(addrM)$('#b_addr').value=addrM[1];
+  if(depositM)$('#b_deposit').value=depositM[1];
+  if(totalM)$('#b_total').value=totalM[1];
+
+  // 显示识别摘要
+  const summary=[];
+  if(nameM)summary.push('👤 '+nameM[1]);
+  if(dateM||/明天|后天|今天/.test(text))summary.push('📅 '+date);
+  if(ampmM)summary.push('⏰ '+start);
+  if(ampmM)summary.push('⏰ '+start);
+  if(type)summary.push('💄 '+type);
+  if(phoneM)summary.push('📞 '+phoneM[0]);
+  if(addrM)summary.push('📍 '+addrM[1].slice(0,8)+'...');
+  if(depositM)summary.push('💰 定金'+depositM[1]);
+  if(totalM)summary.push('💵 全款'+totalM[1]);
+
+  if(summary.length){
+    const box=document.createElement('div');
+    box.className='ocr-result';
+    box.innerHTML='<div style="font-size:12px;color:var(--purple);font-weight:600;margin-bottom:6px">✅ AI识别完成，已自动填入：</div><div style="display:flex;flex-wrap:wrap;gap:4px">'+summary.map(s=>`<span class="tag purple">${s}</span>`).join('')+'</div>';
+    $('#ocrDrop').appendChild(box);
+    toast('识别完成，已自动填入'+summary.length+'项信息');
+  }else{
+    toast('未识别到关键信息，请手动填写');
+  }
+}
+function saveBooking(id){
+  const todo=$('#b_todo').value.split('\n').filter(x=>x.trim());
+  const data={
+    date:$('#b_date').value,start:$('#b_start').value,end:$('#b_end').value,
+    client:$('#b_client').value,phone:$('#b_phone').value,type:$('#b_type').value,
+    addr: bookingAddrValue(),deposit:+$('#b_deposit').value||0,total:+$('#b_total').value||0,
+    status:$('#b_status').value,todo
+  };
+  // 处理图片：保留未删除的旧图 + 新上传的图
+  let imgs=[];
+  if(id){
+    const old=DB.data.bookings.find(x=>x.id===id);
+    if(old&&old.imgs){
+      imgs=old.imgs.filter((_,i)=>!window._removedBookingImgs.includes(i));
+    }
+  }
+  const files=$('#b_files')?$('#b_files').files:[];
+  if(files.length){
+    let pending=files.length;
+    Array.from(files).forEach(f=>{
+      const r=new FileReader();
+      r.onload=e=>{imgs.push(e.target.result);if(!--pending)finishSave();};
+      r.readAsDataURL(f);
+    });
+  }else{
+    finishSave();
+  }
+  function finishSave(){
+    data.imgs=imgs;
+    if(id){Object.assign(DB.data.bookings.find(x=>x.id===id),data);}
+    else{data.id=uid();DB.data.bookings.push(data);}
+    save();closeModal();rerenderBooking();renderMain();toast('已保存');
+  }
+}
+function editBooking(id){openBookingModal(id);}
+function onMakeupTypeChange(){
+  // 价格现在手动输入，不自动填充
+}
+function delBooking(id){
+  if(!confirm('确认删除该预约？'))return;
+  DB.data.bookings=DB.data.bookings.filter(x=>x.id!==id);
+  save();rerenderBooking();renderMain();toast('已删除');
+}
+
+/* 地址兼容：可能是字符串，也可能是 {text,lat,lng} 对象 */
+function addrText(a){ if(a&&typeof a==='object') return a.text||''; return a||''; }
+function bookingAddrValue(){
+  const text=($('#b_addr').value||'').trim();
+  const loc=window._bookingLoc;
+  if(loc&&loc.lat!=null){ return {text:loc.text||text, lat:loc.lat, lng:loc.lng}; }
+  return text;
+}
+function toggleAddrSearch(){ const w=$('#addrSearchWrap'); if(w)w.style.display = (w.style.display==='none'?'block':'none'); }
+async function doAddrSearch(q){
+  const box=$('#addrResults'); if(!box)return;
+  box.innerHTML='<div style="font-size:12px;color:var(--ink-3)">搜索中…</div>';
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=zh-CN&q='+encodeURIComponent(q));
+    const arr=await r.json();
+    if(!Array.isArray(arr)||!arr.length){ box.innerHTML='<div style="font-size:12px;color:var(--ink-3)">无结果，可直接输入地址</div>'; return; }
+    box._data=arr;
+    box.innerHTML=arr.map((it,i)=>`<div class="addr-res" data-i="${i}" style="padding:8px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px"><div>${esc(it.name||it.display_name.split(',')[0])}</div><div style="font-size:11px;color:var(--ink-3)">${esc(it.display_name)}</div></div>`).join('');
+    box.querySelectorAll('.addr-res').forEach(el=>el.onclick=()=>{
+      const it=box._data[+el.dataset.i];
+      window._bookingLoc={text:(it.name||it.display_name.split(',')[0]), lat:+it.lat, lng:+it.lon};
+      $('#b_addr').value=window._bookingLoc.text;
+      const pe=$('#addrPicked'); if(pe)pe.textContent='已选位置：'+window._bookingLoc.text+'（保存后可在详情点「导航前往」）';
+      box.innerHTML='';
+    });
+  }catch(e){ box.innerHTML='<div style="font-size:12px;color:var(--ink-3)">搜索失败，可直接输入地址</div>'; }
+}
+function openNav(bid){
+  const b=DB.data.bookings.find(x=>x.id===bid); if(!b)return;
+  const a=(b.addr&&typeof b.addr==='object')?b.addr:(b.addr?{text:b.addr}:null);
+  if(!a||!a.text){toast('暂无地址');return;}
+  const url=(a.lat!=null&&a.lng!=null)
+    ? 'https://uri.amap.com/marker?position='+a.lng+','+a.lat+'&name='+encodeURIComponent(a.text)+'&src=mua&coordinate=gaode&callnative=1'
+    : 'https://uri.amap.com/search?keyword='+encodeURIComponent(a.text);
+  window.open(url,'_blank');
+}
+function openBookingDetail(id){
+  const b=DB.data.bookings.find(x=>x.id===id); if(!b)return;
+  const a=(b.addr&&typeof b.addr==='object')?b.addr:(b.addr?{text:b.addr}:{text:''});
+  openModal(`
+    <div class="modal-head"><div class="t">${esc(b.client)} · ${esc(b.type)}</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div style="font-size:14px;line-height:2.1">
+      <div>📅 ${b.date} ${b.start}-${b.end}</div>
+      <div>📞 ${esc(b.phone)}</div>
+      <div>💄 ${esc(b.type)}</div>
+      <div>📍 ${esc(a.text||'—')}</div>
+      ${a.text?`<button class="btn ghost sm block" style="margin:10px 0" onclick="openNav(${b.id})">🧭 导航前往</button>`:''}
+      <div>💰 定金 ${money(b.deposit)} · 全款 ${money(b.total)}</div>
+      <div>状态：${esc(b.status)}</div>
+      ${b.todo&&b.todo.length?`<div style="margin-top:8px">待办：${b.todo.map((t,i)=>(b.todoDone&&b.todoDone[i]?'✓':'')+esc(t)).join('、')}</div>`:''}
+    </div>
+    <div class="actions" style="margin-top:14px">
+      <button class="btn ghost sm" onclick="closeModal();editBooking(${b.id})">编辑</button>
+      <button class="btn danger sm" onclick="closeModal();delBooking(${b.id})">删除</button>
+    </div>
+  `);
+}
+
+/* ---- 收支记账 ---- */
+let txPeriod='month';
+let txFilterStart='';
+let txFilterEnd='';
+function viewTx(){
+  return `
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+    <div class="page-title" style="margin-bottom:0;flex:1">收支记账</div>
+    <button class="btn ghost sm" onclick="openTxModal()">+ 记一笔</button>
+    <button class="btn ghost sm ${txView==='calendar'?'active':''}" onclick="txView='calendar';rerenderTx()">📅</button>
+    <button class="btn ghost sm ${txView==='list'?'active':''}" onclick="txView='list';rerenderTx()">📋</button>
+  </div>
+  <div id="txSummary"></div>
+  ${txView==='calendar'?`<div id="txCalendarView"></div>`:`
+  <div class="card" style="margin-top:12px">
+    <div class="section-title"><span class="dot"></span>时间筛选</div>
+    <div class="filter-bar" style="margin:0 0 8px">
+      <div class="filter-chip ${txPeriod==='day'?'active':''}" onclick="txPeriod='day';rerenderTx()">今天</div>
+      <div class="filter-chip ${txPeriod==='week'?'active':''}" onclick="txPeriod='week';rerenderTx()">本周</div>
+      <div class="filter-chip ${txPeriod==='month'?'active':''}" onclick="txPeriod='month';rerenderTx()">本月</div>
+      <div class="filter-chip ${txPeriod==='year'?'active':''}" onclick="txPeriod='year';rerenderTx()">本年</div>
+      <div class="filter-chip ${txPeriod==='all'?'active':''}" onclick="txPeriod='all';rerenderTx()">全部</div>
+      <div class="filter-chip ${txPeriod==='custom'?'active':''}" onclick="txPeriod='custom';rerenderTx()">自定义</div>
+    </div>
+    ${txPeriod==='custom'?`
+    <div class="row">
+      <div class="field"><label>开始</label><input type="date" id="tx_start" value="${txFilterStart}" onchange="txFilterStart=this.value;rerenderTx()"></div>
+      <div class="field"><label>结束</label><input type="date" id="tx_end" value="${txFilterEnd}" onchange="txFilterEnd=this.value;rerenderTx()"></div>
+    </div>`:''}
+  </div>
+  `}
+  ${txView==='list'?`<div id="txList"></div>`:''}
+  `;
+}
+function rerenderTx(){
+  // 在“接单业务”标签页内时，只重渲染收支子面板
+  if(currentView==='orders'&&ordersSubTab==='tx'){
+    const p=$('#ordersPanel');
+    if(p){p.innerHTML=viewTx();bindTx();}
+    return;
+  }
+  const inner=$('#mainInner');
+  if(inner){inner.innerHTML=viewTx();bindTx();}
+}
+function getFilteredTx(){
+  const now=new Date();
+  const ds=todayStr();
+  let list=DB.data.transactions;
+  if(txPeriod==='day'){
+    list=list.filter(t=>t.date===ds);
+  }else if(txPeriod==='week'){
+    const start=new Date(now);start.setDate(now.getDate()-now.getDay());
+    const startDs=start.toISOString().slice(0,10);
+    list=list.filter(t=>t.date>=startDs&&t.date<=ds);
+  }else if(txPeriod==='month'){
+    const ms=ds.slice(0,7);
+    list=list.filter(t=>t.date.slice(0,7)===ms);
+  }else if(txPeriod==='year'){
+    const ys=ds.slice(0,4);
+    list=list.filter(t=>t.date.slice(0,4)===ys);
+  }else if(txPeriod==='custom'&&txFilterStart&&txFilterEnd){
+    list=list.filter(t=>t.date>=txFilterStart&&t.date<=txFilterEnd);
+  }
+  return list;
+}
+function bindTx(){
+  renderTxSummary();
+  if(txView==='calendar'){renderTxCalendar();}
+  else{renderTxList();}
+}
+function renderTxSummary(){
+  const sum=$('#txSummary');
+  if(!sum)return;
+  if(txView!=='calendar'){ sum.innerHTML=''; return; } // 列表视图不显示汇总大框，直接看明细
+  const all=DB.data.transactions;
+  const totInc=all.filter(t=>t.type==='收入').reduce((s,t)=>s+t.amount,0);
+  const totExp=all.filter(t=>t.type==='支出').reduce((s,t)=>s+t.amount,0);
+  const filtered=getFilteredTx();
+  const fInc=filtered.filter(t=>t.type==='收入').reduce((s,t)=>s+t.amount,0);
+  const fExp=filtered.filter(t=>t.type==='支出').reduce((s,t)=>s+t.amount,0);
+  // 日历视图只显示 总收入/总支出 两个大框，点击跳转到列表对应筛选明细（不再显示利润框）
+  sum.innerHTML=`
+    <div class="stat-grid">
+      <div class="stat-card" style="cursor:pointer" onclick="txView='list';txListFilter='收入';rerenderTx()"><div class="label">总收入</div><div class="num" style="color:var(--income)">${money(fInc)}</div><div class="sub">点击看收入明细 →</div></div>
+      <div class="stat-card" style="cursor:pointer" onclick="txView='list';txListFilter='支出';rerenderTx()"><div class="label">总支出</div><div class="num" style="color:var(--expense)">${money(fExp)}</div><div class="sub">点击看支出明细 →</div></div>
+    </div>`;
+}
+function renderTxChart(){
+  const filtered=getFilteredTx();
+  let labels=[],incArr=[],expArr=[];
+  if(txPeriod==='day'){
+    // 按小时分布不太合理，改为显示当天收入支出
+    labels=['今天'];incArr=[filtered.filter(t=>t.type==='收入').reduce((s,t)=>s+t.amount,0)];expArr=[filtered.filter(t=>t.type==='支出').reduce((s,t)=>s+t.amount,0)];
+  }else if(txPeriod==='week'){
+    const now=new Date();
+    const start=new Date(now);start.setDate(now.getDate()-now.getDay());
+    for(let i=0;i<7;i++){
+      const dd=new Date(start);dd.setDate(start.getDate()+i);
+      const ds=dd.toISOString().slice(0,10);
+      labels.push('日一二三四五六'[dd.getDay()]);
+      incArr.push(filtered.filter(t=>t.date===ds&&t.type==='收入').reduce((s,t)=>s+t.amount,0));
+      expArr.push(filtered.filter(t=>t.date===ds&&t.type==='支出').reduce((s,t)=>s+t.amount,0));
+    }
+  }else if(txPeriod==='month'){
+    // 本月按天
+    const ds=todayStr();
+    const ms=ds.slice(0,7);
+    const days=new Date(+ds.slice(0,4),+ds.slice(5,7),0).getDate();
+    for(let i=1;i<=days;i++){
+      const dd=ms+'-'+String(i).padStart(2,'0');
+      labels.push(i);
+      incArr.push(filtered.filter(t=>t.date===dd&&t.type==='收入').reduce((s,t)=>s+t.amount,0));
+      expArr.push(filtered.filter(t=>t.date===dd&&t.type==='支出').reduce((s,t)=>s+t.amount,0));
+    }
+  }else if(txPeriod==='year'){
+    // 按月
+    const ys=todayStr().slice(0,4);
+    for(let i=1;i<=12;i++){
+      const ms=ys+'-'+String(i).padStart(2,'0');
+      labels.push(i+'月');
+      incArr.push(filtered.filter(t=>t.date.slice(0,7)===ms&&t.type==='收入').reduce((s,t)=>s+t.amount,0));
+      expArr.push(filtered.filter(t=>t.date.slice(0,7)===ms&&t.type==='支出').reduce((s,t)=>s+t.amount,0));
+    }
+  }else{
+    // all 或 custom：按月聚合
+    const months={};
+    filtered.forEach(t=>{
+      const ms=t.date.slice(0,7);
+      if(!months[ms])months[ms]={inc:0,exp:0};
+      if(t.type==='收入')months[ms].inc+=t.amount;else months[ms].exp+=t.amount;
+    });
+    const keys=Object.keys(months).sort();
+    keys.forEach(k=>{labels.push(k.slice(5));incArr.push(months[k].inc);expArr.push(months[k].exp);});
+    if(!labels.length){labels=['暂无'];incArr=[0];expArr=[0];}
+  }
+  const max=Math.max(1,...incArr,...expArr);
+  const chartH=140;
+  let bars=labels.map((l,i)=>{
+    const ih=Math.max(2,incArr[i]/max*chartH);
+    const eh=Math.max(2,expArr[i]/max*chartH);
+    return `<div class="bar-col">
+      <div style="display:flex;gap:2px;align-items:flex-end;height:${chartH+4}px">
+        <div class="bar" style="height:${ih}px;background:var(--income);min-width:8px" title="收入${money(incArr[i])}"></div>
+        <div class="bar" style="height:${eh}px;background:var(--expense);min-width:8px" title="支出${money(expArr[i])}"></div>
+      </div>
+      <div class="bar-label">${l}</div>
+    </div>`;
+  }).join('');
+  const totInc=incArr.reduce((a,b)=>a+b,0),totExp=expArr.reduce((a,b)=>a+b,0);
+  const periodLabel=txPeriod==='day'?'今天':txPeriod==='week'?'本周':txPeriod==='month'?'本月':txPeriod==='year'?'本年':txPeriod==='custom'?'自定义区间':'全部';
+  $('#txChart').innerHTML=`
+    <div class="card" style="margin-top:12px">
+      <div class="section-title"><span class="dot"></span>${periodLabel}收支趋势</div>
+      <div style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--income);margin-right:4px"></span>收入 ${money(totInc)}</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--expense);margin-right:4px"></span>支出 ${money(totExp)}</span>
+        <span style="margin-left:auto;color:var(--accent);font-weight:700">净利 ${money(totInc-totExp)}</span>
+      </div>
+      <div class="chart-wrap"><div class="bar-chart" style="min-width:${labels.length>10?labels.length*30:300}px">${bars}</div></div>
+    </div>`;
+}
+function renderTxList(){
+  let list=getFilteredTx().sort((a,b)=>b.date.localeCompare(a.date));
+  // 应用类型筛选
+  if(txListFilter){list=list.filter(t=>t.type===txListFilter);}
+  // 日历视图只显示当天流水（日历点击时会设置 txPeriod='day'）
+  $('#txList').innerHTML=`<div class="card" style="margin-top:12px"><div class="section-title"><span class="dot"></span>交易明细 (${list.length})</div>
+  ${txView==='list'?`
+  <div class="filter-bar" style="margin-bottom:8px">
+    <div class="filter-chip ${!txListFilter?'active':''}" onclick="txListFilter='';rerenderTx()">全部</div>
+    <div class="filter-chip ${txListFilter==='收入'?'active':''}" onclick="txListFilter='${txListFilter==='收入'?'':'收入'}';rerenderTx()">收入</div>
+    <div class="filter-chip ${txListFilter==='支出'?'active':''}" onclick="txListFilter='${txListFilter==='支出'?'':'支出'}';rerenderTx()">支出</div>
+  </div>`:''}
+  ${
+    list.length?list.map(t=>{
+      const order=t.orderId?DB.data.bookings.find(b=>b.id===t.orderId):null;
+      return `<div class="list-item" style="box-shadow:none;background:var(--bg-2)">
+        <div class="top">
+          <div>
+            <div class="name" style="color:${t.type==='收入'?'var(--income)':'var(--expense)'}">${t.type==='收入'?'+':'-'}${money(t.amount)}</div>
+            <div class="meta">${t.date} · ${t.type==='收入'?t.incCat:t.expCat}${order?' · '+esc(order.client):''}</div>
+            ${t.note?`<div class="meta">${esc(t.note)}</div>`:''}
+          </div>
+          <span class="tag ${t.type==='收入'?'green':'red'}">${t.type}</span>
+        </div>
+        <div class="actions">
+          <button class="btn ghost sm" onclick="editTx(${t.id})">编辑</button>
+          <button class="btn danger sm" onclick="delTx(${t.id})">删除</button>
+        </div>
+      </div>`;
+    }).join(''):'<div class="empty">暂无交易记录</div>'
+  }</div>`;
+}
+function openTxModal(id){
+  const t=id?DB.data.transactions.find(x=>x.id===id):{date:todayStr(),orderId:'',type:'收入',amount:0,incCat:'妆造服务',expCat:'',note:''};
+  const orders=DB.data.bookings;
+  openModal(`
+    <div class="modal-head"><div class="t">${id?'编辑收支':'记一笔收支'}</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>交易日期</label><input type="date" id="t_date" value="${t.date}"></div>
+    <div class="row">
+      <div class="field"><label>收支类型</label>
+        <select id="t_type" onchange="toggleTxCat()">
+          <option value="收入" ${t.type==='收入'?'selected':''}>收入</option>
+          <option value="支出" ${t.type==='支出'?'selected':''}>支出</option>
+        </select>
+      </div>
+      <div class="field"><label>金额</label><input type="number" id="t_amount" value="${t.amount}"></div>
+    </div>
+    <div class="field" id="incCatField"><label>收入分类</label>
+      <select id="t_incCat">
+        ${['定金','尾款','全款','课程培训','其他收入'].map(c=>`<option ${t.incCat===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field" id="expCatField" style="display:none"><label>支出分类</label>
+      <select id="t_expCat">
+        ${['物料采购','交通出行','场地租金','营销推广','培训学习','餐饮日用','其他支出'].map(c=>`<option ${t.expCat===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>关联订单</label>
+      <select id="t_order">
+        <option value="">无</option>
+        ${orders.map(o=>`<option value="${o.id}" ${t.orderId===o.id?'selected':''}>${o.date} ${esc(o.client)} ${esc(o.type)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>备注</label><input id="t_note" value="${esc(t.note)}" placeholder="备注"></div>
+    <button class="btn block" onclick="saveTx(${id||0})">保存</button>
+  `);
+  toggleTxCat();
+}
+function toggleTxCat(){
+  const type=$('#t_type').value;
+  $('#incCatField').style.display=type==='收入'?'block':'none';
+  $('#expCatField').style.display=type==='支出'?'block':'none';
+}
+function saveTx(id){
+  const type=$('#t_type').value;
+  const data={
+    date:$('#t_date').value,orderId:+$('#t_order').value||'',type,
+    amount:+$('#t_amount').value||0,
+    incCat:type==='收入'?$('#t_incCat').value:'',
+    expCat:type==='支出'?$('#t_expCat').value:'',
+    note:$('#t_note').value
+  };
+  if(id){Object.assign(DB.data.transactions.find(x=>x.id===id),data);}
+  else{data.id=uid();DB.data.transactions.push(data);}
+  save();closeModal();rerenderTx();renderMain();toast('已保存');
+}
+function editTx(id){openTxModal(id);}
+function delTx(id){
+  if(!confirm('确认删除？'))return;
+  DB.data.transactions=DB.data.transactions.filter(x=>x.id!==id);
+  save();rerenderTx();renderMain();toast('已删除');
+}
+/* 收支日历视图 */
+function renderTxCalendar(){
+  if(!txCalSel) txCalSel=todayStr();
+  const y=calDate.getFullYear(),m=calDate.getMonth();
+  const first=new Date(y,m,1);const firstDow=first.getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const dows=['日','一','二','三','四','五','六'];
+  const ds=new Date().toISOString().slice(0,10);
+  let cells='';
+  for(let i=0;i<firstDow;i++)cells+=`<div class="cal-day other"></div>`;
+  for(let i=1;i<=days;i++){
+    const dd=String(i).padStart(2,'0');
+    const mms=String(m+1).padStart(2,'0');
+    const ds2=`${y}-${mms}-${dd}`;
+    const has=DB.data.transactions.some(t=>t.date===ds2);
+    const cls=(ds===ds2?' today':'')+(has?' has-event':'')+(txCalSel===ds2?' selected':'');
+    cells+=`<div class="cal-day${cls}" data-day="${ds2}" onclick="txCalSel='${ds2}';renderTxDayFlow()">${i}</div>`;
+  }
+  $('#txCalendarView').innerHTML=`
+  <div class="card" style="margin-top:12px">
+    <div class="cal-head">
+      <button class="cal-nav" onclick="calDate.setMonth(calDate.getMonth()-1);rerenderTx()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="ym">${y}年${m+1}月</div>
+      <button class="cal-nav" onclick="calDate.setMonth(calDate.getMonth()+1);rerenderTx()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+    <div class="cal-grid">${dows.map(d=>`<div class="cal-dow">${d}</div>`).join('')}${cells}</div>
+  </div>
+  <div id="txDayFlow"></div>`;
+  renderTxDayFlow();
+}
+// 日历视图下：根据选中日渲染“当日流水”（日历保持可见）
+function renderTxDayFlow(){
+  const el=document.getElementById('txDayFlow');
+  if(!el) return;
+  const ds=txCalSel||todayStr();
+  const filtered=DB.data.transactions.filter(t=>t.date===ds);
+  const fInc=filtered.filter(t=>t.type==='收入').reduce((s,t)=>s+t.amount,0);
+  const fExp=filtered.filter(t=>t.type==='支出').reduce((s,t)=>s+t.amount,0);
+  el.innerHTML=`<div class="card" style="margin-top:12px"><div class="section-title"><span class="dot"></span>${ds.slice(5).replace('-','/')} 流水 · 收入${money(fInc)} 支出${money(fExp)}</div>${
+    filtered.length?filtered.map(t=>{
+      const order=t.orderId?DB.data.bookings.find(b=>b.id===t.orderId):null;
+      return `<div class="list-item" style="box-shadow:none;background:var(--bg-2)">
+        <div class="top">
+          <div>
+            <div class="name" style="color:${t.type==='收入'?'var(--income)':'var(--expense)'}">${t.type==='收入'?'+':'-'}${money(t.amount)}</div>
+            <div class="meta">${t.type==='收入'?t.incCat:t.expCat}${order?' · '+esc(order.client):''}</div>
+            ${t.note?`<div class="meta">${esc(t.note)}</div>`:''}
+          </div>
+          <span class="tag ${t.type==='收入'?'green':'red'}">${t.type}</span>
+        </div>
+        <div class="actions">
+          <button class="btn ghost sm" onclick="editTx(${t.id})">编辑</button>
+          <button class="btn danger sm" onclick="delTx(${t.id})">删除</button>
+        </div>
+      </div>`;
+    }).join(''):'<div class="empty">当日无流水</div>'
+  }</div>`;
+}
+
+/* ============================================================
+   客户档案
+   ============================================================ */
+function viewClients(){
+  const list=DB.data.clients;
+  return `
+  <div class="page-title">客户档案</div>
+  <div class="page-desc">共 ${list.length} 位客户</div>
+  <button class="btn sm" onclick="openClientModal()" style="margin-bottom:12px">+ 新增客户</button>
+  ${list.length?list.map(c=>{
+    const orders=DB.data.bookings.filter(b=>b.client===c.name);
+    return `<div class="list-item">
+      <div class="top">
+        <div>
+          <div class="name">${esc(c.name)}</div>
+          <div class="meta">${esc(c.phone)} · ${esc(c.skin)}</div>
+        </div>
+        <span class="tag blue">${orders.length}单</span>
+      </div>
+      ${c.allergy?`<div class="meta" style="color:var(--expense)"><b>过敏：</b>${esc(c.allergy)}</div>`:''}
+      ${c.prefer?`<div class="meta"><b>偏好：</b>${esc(c.prefer)}</div>`:''}
+      ${c.note?`<div class="meta"><b>备注：</b>${esc(c.note)}</div>`:''}
+      <div class="actions">
+        <button class="btn ghost sm" onclick="openClientModal(${c.id})">编辑</button>
+        <button class="btn danger sm" onclick="delClient(${c.id})">删除</button>
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty">暂无客户</div>'}
+  `;
+}
+function bindClients(){}
+function openClientModal(id){
+  const c=id?DB.data.clients.find(x=>x.id===id):{name:'',phone:'',skin:'',allergy:'',prefer:'',note:'',bday:''};
+  openModal(`
+    <div class="modal-head"><div class="t">${id?'编辑客户':'新增客户'}</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div class="row">
+      <div class="field"><label>姓名</label><input id="c_name" value="${esc(c.name)}"></div>
+      <div class="field"><label>联系方式</label><input id="c_phone" value="${esc(c.phone)}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>肤质</label><input id="c_skin" value="${esc(c.skin)}" placeholder="如 混干皮/油皮"></div>
+      <div class="field"><label>生日</label><input type="date" id="c_bday" value="${c.bday||''}"></div>
+    </div>
+    <div class="field"><label>过敏源</label><input id="c_allergy" value="${esc(c.allergy)}" placeholder="无/酒精/香精等"></div>
+    <div class="field"><label>妆容偏好</label><input id="c_prefer" value="${esc(c.prefer)}" placeholder="如 清透自然"></div>
+    <div class="field"><label>备注</label><textarea id="c_note" placeholder="备注">${esc(c.note)}</textarea></div>
+    <button class="btn block" onclick="saveClient(${id||0})">保存</button>
+  `);
+}
+function saveClient(id){
+  const data={name:$('#c_name').value,phone:$('#c_phone').value,skin:$('#c_skin').value,bday:$('#c_bday').value,allergy:$('#c_allergy').value,prefer:$('#c_prefer').value,note:$('#c_note').value};
+  if(id){Object.assign(DB.data.clients.find(x=>x.id===id),data);}
+  else{data.id=uid();DB.data.clients.push(data);}
+  save();closeModal();renderMain();toast('已保存');
+}
+function delClient(id){
+  if(!confirm('确认删除？'))return;
+  DB.data.clients=DB.data.clients.filter(x=>x.id!==id);
+  save();renderMain();toast('已删除');
+}
+
+/* ============================================================
+   物料库存
+   ============================================================ */
+function viewInventory(){
+  const list=DB.data.inventory;
+  const expiring=list.filter(i=>{const d=new Date(i.expire);const days=(d-new Date())/86400000;return days<60;});
+  const low=list.filter(i=>i.stock<=i.threshold);
+  return `
+  <div class="page-title">物料库存</div>
+  <div class="page-desc">共 ${list.length} 件 · ${expiring.length}件即将过期 · ${low.length}件库存不足</div>
+  ${(expiring.length||low.length)?`
+  <div class="card" style="background:rgba(255,165,2,.1);border:1px solid rgba(255,165,2,.3)">
+    <div class="section-title" style="color:var(--warn)"><span class="dot" style="background:var(--warn)"></span>提醒</div>
+    ${expiring.length?`<div style="font-size:13px;color:var(--ink-2)">即将过期：${expiring.map(i=>esc(i.name)+'('+esc(i.shade)+')').join('、')}</div>`:''}
+    ${low.length?`<div style="font-size:13px;color:var(--ink-2);margin-top:4px">库存不足：${low.map(i=>esc(i.name)+'(余'+i.stock+i.unit+')').join('、')}</div>`:''}
+  </div>`:''}
+  <div style="display:flex;align-items:center;gap:8px;margin:12px 0">
+    <button class="btn sm" onclick="openInvModal()">+ 新增物料</button>
+    <input id="invSearch" placeholder="🔍 搜索物料名称" value="${invSearch}" oninput="invSearch=this.value;renderInvList()"
+      style="flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:14px;background:var(--bg-2);color:var(--ink)">
+  </div>
+  <div id="invListBox">${invListHTML()}</div>
+  `;
+}
+// 库存列表（含：低库存置顶 + 按名称实时搜索过滤）
+function invListHTML(){
+  const all=DB.data.inventory;
+  const kw=(invSearch||'').trim().toLowerCase();
+  let list=all.filter(i=>!kw || (i.name||'').toLowerCase().includes(kw) || (i.shade||'').toLowerCase().includes(kw));
+  // 低库存（库存≤阈值）始终置顶
+  list=list.slice().sort((a,b)=>{
+    const la=a.stock<=a.threshold?0:1, lb=b.stock<=b.threshold?0:1;
+    if(la!==lb) return la-lb;
+    return 0;
+  });
+  if(!list.length) return '<div class="empty">暂无物料</div>';
+  return list.map(i=>{
+    const exp=new Date(i.expire);const days=(exp-new Date())/86400000;
+    const expTag=days<0?'tag red':days<60?'tag gold':'tag green';
+    const expText=days<0?'已过期':days<60?Math.ceil(days)+'天后过期':'正常';
+    const stkColor=i.stock<=i.threshold?'var(--expense)':i.stock<=i.threshold*2?'var(--warn)':'var(--income)';
+    const pin=i.stock<=i.threshold?'<span style="font-size:11px;color:var(--expense);margin-left:6px">⚠ 库存不足</span>':'';
+    return `<div class="list-item" id="inv_${i.id}">
+      <div class="top">
+        <div>
+          <div class="name">${esc(i.name)} <span style="font-size:12px;color:var(--ink-3);font-weight:400">${esc(i.shade)}</span>${pin}</div>
+          <div class="meta">购入 ${i.buyDate} · 保质期至 ${i.expire}</div>
+        </div>
+        <span class="tag ${expTag}">${expText}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:2px">库存余量</div>
+          <div style="font-size:20px;font-weight:800;color:${stkColor}">${i.stock} <span style="font-size:12px;font-weight:400">${esc(i.unit)}</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--ink-3)">预警阈值：${i.threshold}${esc(i.unit)}</div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost sm" onclick="openInvModal(${i.id})">编辑</button>
+        <button class="btn ghost sm" onclick="consumeInv(${i.id})">消耗</button>
+        <button class="btn danger sm" onclick="delInv(${i.id})">删除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+// 仅刷新列表区域，避免搜索时输入框失焦
+function renderInvList(){
+  const box=document.getElementById('invListBox');
+  if(box) box.innerHTML=invListHTML();
+}
+function bindInventory(){}
+function openInvModal(id){
+  const i=id?DB.data.inventory.find(x=>x.id===id):{name:'',shade:'',buyDate:todayStr(),expire:'',stock:1,unit:'件',threshold:1};
+  openModal(`
+    <div class="modal-head"><div class="t">${id?'编辑物料':'新增物料'}</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div class="row">
+      <div class="field"><label>产品名称</label><input id="i_name" value="${esc(i.name)}"></div>
+      <div class="field"><label>色号</label><input id="i_shade" value="${esc(i.shade)}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>购入时间</label><input type="date" id="i_buy" value="${i.buyDate}"></div>
+      <div class="field"><label>保质期</label><input type="date" id="i_exp" value="${i.expire}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>库存数量</label><input type="number" min="0" id="i_stock" value="${i.stock}"></div>
+      <div class="field"><label>单位</label><input id="i_unit" value="${esc(i.unit)}" placeholder="瓶/块/支"></div>
+    </div>
+    <div class="field"><label>库存预警阈值（低于此数量提醒）</label><input type="number" min="0" id="i_threshold" value="${i.threshold||1}"></div>
+    <button class="btn block" onclick="saveInv(${id||0})">保存</button>
+  `);
+}
+function saveInv(id){
+  const data={name:$('#i_name').value,shade:$('#i_shade').value,buyDate:$('#i_buy').value,expire:$('#i_exp').value,stock:+$('#i_stock').value||0,unit:$('#i_unit').value,threshold:+$('#i_threshold').value||1};
+  if(id){Object.assign(DB.data.inventory.find(x=>x.id===id),data);}
+  else{data.id=uid();DB.data.inventory.push(data);}
+  save();closeModal();renderMain();toast('已保存');
+}
+function consumeInv(id){
+  const i=DB.data.inventory.find(x=>x.id===id);
+  const v=prompt('消耗数量（'+i.unit+'）：','1');
+  if(v===null)return;
+  const n=+v||0;
+  if(n>i.stock){toast('消耗数量超过库存');return;}
+  i.stock=Math.max(0,i.stock-n);
+  save();renderMain();toast('已消耗'+n+i.unit);
+}
+function delInv(id){
+  if(!confirm('确认删除？'))return;
+  DB.data.inventory=DB.data.inventory.filter(x=>x.id!==id);
+  save();renderMain();toast('已删除');
+}
+
+/* ============================================================
+   妆容价目管理
+   ============================================================ */
+function viewMakeupTypes(){
+  const list=DB.data.makeupTypes||[];
+  return `
+  <div class="page-title">妆容价目</div>
+  <div class="page-desc">管理妆容类型，预约时可直接选择</div>
+  <button class="btn sm" onclick="openMakeupTypeModal()" style="margin-bottom:12px">+ 新增妆容类型</button>
+  ${list.length?list.map(t=>`
+    <div class="list-item">
+      <div class="top">
+        <div>
+          <div class="name">${esc(t.name)}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost sm" onclick="openMakeupTypeModal(${t.id})">编辑</button>
+        <button class="btn danger sm" onclick="delMakeupType(${t.id})">删除</button>
+      </div>
+    </div>
+  `).join(''):'<div class="empty">暂无妆容类型</div>'}
+  `;
+}
+function openMakeupTypeModal(id){
+  const t=id?(DB.data.makeupTypes||[]).find(x=>x.id===id):{name:''};
+  openModal(`
+    <div class="modal-head"><div class="t">${id?'编辑妆容':'新增妆容'}</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>妆容名称</label><input id="mt_name" value="${esc(t.name)}" placeholder="如 新娘妆"></div>
+    <button class="btn block" onclick="saveMakeupType(${id||0})">保存</button>
+  `);
+}
+function saveMakeupType(id){
+  const data={name:$('#mt_name').value};
+  if(!data.name){toast('请输入名称');return;}
+  if(!DB.data.makeupTypes)DB.data.makeupTypes=[];
+  if(id){Object.assign(DB.data.makeupTypes.find(x=>x.id===id),data);}
+  else{data.id=uid();DB.data.makeupTypes.push(data);}
+  save();closeModal();renderMain();toast('已保存');
+}
+function delMakeupType(id){
+  if(!confirm('确认删除？'))return;
+  DB.data.makeupTypes=DB.data.makeupTypes.filter(x=>x.id!==id);
+  save();renderMain();toast('已删除');
+}
+/* 预约排单齿轮 - 妆容品类管理弹窗 */
+function openMakeupTypeManager(){
+  const list=DB.data.makeupTypes||[];
+  openModal(`
+    <div class="modal-head"><div class="t">管理妆容品类</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">这里管理的品类将出现在新建预约时的妆容类型下拉中</div>
+    ${list.length?list.map(t=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
+        <span style="flex:1;font-size:14px;font-weight:500" id="mtName_${t.id}">${esc(t.name)}</span>
+        <button class="btn ghost sm" onclick="renameMakeupType(${t.id})">重命名</button>
+        <button class="btn danger sm" onclick="delMakeupTypeFromManager(${t.id})">删除</button>
+      </div>
+    `).join(''):'<div class="empty">暂无品类</div>'}
+    <div class="row" style="margin-top:12px">
+      <input id="newMakeupName" placeholder="新品类名称" style="flex:1">
+      <button class="btn sm" onclick="addMakeupTypeFromManager()">新增</button>
+    </div>
+  `);
+}
+function addMakeupTypeFromManager(){
+  const name=$('#newMakeupName').value.trim();
+  if(!name){toast('请输入名称');return;}
+  if(!DB.data.makeupTypes)DB.data.makeupTypes=[];
+  DB.data.makeupTypes.push({id:uid(),name});
+  save();closeModal();renderMain();toast('已添加');
+}
+function renameMakeupType(id){
+  const t=DB.data.makeupTypes.find(x=>x.id===id);
+  if(!t)return;
+  const newName=prompt('重命名品类：',t.name);
+  if(newName&&newName.trim()){
+    t.name=newName.trim();
+    save();closeModal();renderMain();toast('已重命名');
+  }
+}
+function delMakeupTypeFromManager(id){
+  if(!confirm('确认删除？'))return;
+  DB.data.makeupTypes=DB.data.makeupTypes.filter(x=>x.id!==id);
+  save();closeModal();renderMain();toast('已删除');
+}
+
+/* ============================================================
+   客片作品
+   ============================================================ */
+let galleryFilter='';
+function viewGallery(){
+  const list=DB.data.gallery;
+  const tags=DB.data.galleryTags||[];
+  // 拍平所有图片，保留来源信息
+  const allImgs=list.flatMap(g=>(g.imgs||[]).map((src,i)=>({src,gid:g.id,idx:i,makeup:g.makeup,tags:g.tags||[],order:g.orderId?DB.data.bookings.find(b=>b.id===g.orderId):null})));
+  // 当前要显示的图片列表
+  const showImgs=galleryFilter?allImgs.filter(img=>img.tags.includes(galleryFilter)):allImgs;
+
+  return `
+  <div class="page-title">客片作品</div>
+  <div class="page-desc">共 ${list.length} 组 · ${allImgs.length} 张图${galleryFilter?' · '+esc(galleryFilter):' · 全部'}</div>
+  <button class="btn sm" onclick="openGalleryModal()" style="margin-bottom:12px">+ 上传客片</button>
+  <button class="btn ghost sm" onclick="manageGalleryTags()" style="margin-bottom:12px;margin-left:6px">管理标签</button>
+
+  <div class="filter-bar" style="margin-bottom:12px">
+    <div class="filter-chip ${!galleryFilter?'active':''}" onclick="galleryFilter='';renderMain()">全部</div>
+    ${tags.map(t=>`<div class="filter-chip ${galleryFilter===t?'active':''}" onclick="galleryFilter='${galleryFilter===t?'':t}';renderMain()">${esc(t)}</div>`).join('')}
+  </div>
+
+  ${showImgs.length?`
+    <div class="card">
+      <div class="img-grid">
+        ${showImgs.map((img,i)=>`<div class="img-cell" onclick="viewGalleryImgFlat(${img.gid},${img.idx})"><img src="${esc(img.src)}"></div>`).join('')}
+      </div>
+    </div>
+  `:'<div class="empty"><div class="ico">'+ICONS.gallery+'</div>暂无客片<br>点击上方上传</div>'}
+  `;
+}
+function bindGallery(){}
+// 全局变量：当前大图查看的图片列表和索引
+let _galleryViewList=[];
+let _galleryViewIdx=0;
+function viewGalleryImgFlat(gid,idx){
+  // 根据当前筛选构建全局图片列表
+  const list=DB.data.gallery;
+  const allImgs=list.flatMap(g=>(g.imgs||[]).map((src,i)=>({src,gid:g.id,idx:i,makeup:g.makeup,tags:g.tags||[],order:g.orderId?DB.data.bookings.find(b=>b.id===g.orderId):null})));
+  _galleryViewList=galleryFilter?allImgs.filter(img=>img.tags.includes(galleryFilter)):allImgs;
+  // 找到点击的图片在列表中的位置
+  _galleryViewIdx=_galleryViewList.findIndex(img=>img.gid===gid&&img.idx===idx);
+  if(_galleryViewIdx<0)_galleryViewIdx=0;
+  renderGalleryViewer();
+}
+function renderGalleryViewer(){
+  const img=_galleryViewList[_galleryViewIdx];
+  if(!img)return;
+  const g=DB.data.gallery.find(x=>x.id===img.gid);
+  const order=img.order;
+  openModal(`
+    <div class="modal-head">
+      <div class="t">${esc(img.makeup||g.makeup)} (${_galleryViewIdx+1}/${_galleryViewList.length})</div>
+      <button class="x" onclick="closeModal()">✕</button>
+    </div>
+    <div style="text-align:center;position:relative">
+      <img src="${esc(img.src)}" style="width:100%;border-radius:var(--radius-sm);max-height:55vh;object-fit:contain">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:space-between">
+      <button class="btn ghost sm" ${_galleryViewIdx<=0?'disabled style="opacity:.4"':''} onclick="galleryViewerPrev()">‹ 上一张</button>
+      <span style="font-size:12px;color:var(--ink-3);align-self:center">${_galleryViewIdx+1} / ${_galleryViewList.length}</span>
+      <button class="btn ghost sm" ${_galleryViewIdx>=_galleryViewList.length-1?'disabled style="opacity:.4;margin-left:auto"':'style="margin-left:auto"'} onclick="galleryViewerNext()">下一张 ›</button>
+    </div>
+    ${order?`<div class="card" style="margin-top:12px;background:var(--bg-2);box-shadow:none">
+      <div style="font-size:14px;font-weight:600">${esc(order.client)} · ${esc(order.type)}</div>
+      <div style="font-size:12px;color:var(--ink-3);margin-top:4px">${order.date} ${order.start}-${order.end} · ${esc(addrText(order.addr)||'')}</div>
+      <div style="font-size:12px;color:var(--ink-3);margin-top:2px">定金${money(order.deposit)} · 全款${money(order.total)}</div>
+    </div>`:''}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn ghost sm" onclick="closeModal();openGalleryModal(${img.gid})">编辑</button>
+      <button class="btn danger sm" onclick="delGalleryImg(${img.gid},${img.idx})">删除此图</button>
+    </div>
+  `);
+}
+function galleryViewerPrev(){
+  if(_galleryViewIdx>0){_galleryViewIdx--;renderGalleryViewer();}
+}
+function galleryViewerNext(){
+  if(_galleryViewIdx<_galleryViewList.length-1){_galleryViewIdx++;renderGalleryViewer();}
+}
+// 触摸滑动支持
+document.addEventListener('touchstart',function(e){
+  if(!document.getElementById('modalMask')||!document.getElementById('modalMask').classList.contains('show'))return;
+  if(_galleryViewList.length<=1)return;
+  window._touchStartX=e.touches[0].clientX;
+},{passive:true});
+document.addEventListener('touchend',function(e){
+  if(window._touchStartX===undefined)return;
+  if(!document.getElementById('modalMask')||!document.getElementById('modalMask').classList.contains('show'))return;
+  if(_galleryViewList.length<=1)return;
+  const dx=e.changedTouches[0].clientX-window._touchStartX;
+  if(Math.abs(dx)>50){
+    if(dx>0)galleryViewerPrev();
+    else galleryViewerNext();
+  }
+  window._touchStartX=undefined;
+},{passive:true});
+function delGalleryImg(gid,idx){
+  if(!confirm('确认删除这张图片？'))return;
+  const g=DB.data.gallery.find(x=>x.id===gid);
+  g.imgs.splice(idx,1);
+  save();closeModal();renderMain();toast('已删除');
+}
+function manageGalleryTags(){
+  const tags=DB.data.galleryTags||[];
+  openModal(`
+    <div class="modal-head"><div class="t">管理标签</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div id="tagList">
+      ${tags.map((t,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
+        <span style="flex:1;font-size:14px;font-weight:500">${esc(t)}</span>
+        <button class="btn ghost sm" onclick="renameGalleryTag(${i})">重命名</button>
+        <button class="btn danger sm" onclick="delGalleryTag(${i})">删除</button>
+      </div>`).join('')}
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label>新增标签</label>
+      <div style="display:flex;gap:8px">
+        <input id="newTag" placeholder="如 欧美妆" style="flex:1">
+        <button class="btn sm" onclick="addGalleryTag()">添加</button>
+      </div>
+    </div>
+  `);
+}
+function addGalleryTag(){
+  const v=$('#newTag').value.trim();
+  if(!v){toast('请输入标签名');return;}
+  if(!DB.data.galleryTags)DB.data.galleryTags=[];
+  if(DB.data.galleryTags.includes(v)){toast('标签已存在');return;}
+  DB.data.galleryTags.push(v);
+  save();closeModal();renderMain();toast('已添加');
+}
+function renameGalleryTag(i){
+  const v=prompt('输入新名称：',DB.data.galleryTags[i]);
+  if(!v||!v.trim())return;
+  const old=DB.data.galleryTags[i];
+  DB.data.galleryTags[i]=v.trim();
+  // 更新所有客片的标签
+  DB.data.gallery.forEach(g=>{
+    if(g.tags){
+      const idx=g.tags.indexOf(old);
+      if(idx>=0)g.tags[idx]=v.trim();
+    }
+  });
+  save();closeModal();renderMain();toast('已重命名');
+}
+function delGalleryTag(i){
+  if(!confirm('确认删除标签？相关客片将变为未分类'))return;
+  const tag=DB.data.galleryTags[i];
+  DB.data.galleryTags.splice(i,1);
+  // 从客片中移除该标签
+  DB.data.gallery.forEach(g=>{
+    if(g.tags)g.tags=g.tags.filter(t=>t!==tag);
+  });
+  save();closeModal();renderMain();toast('已删除');
+}
+function openGalleryModal(id){
+  const g=id?DB.data.gallery.find(x=>x.id===id):{orderId:'',makeup:'',imgs:[],tags:[]};
+  const orders=DB.data.bookings;
+  const tags=DB.data.galleryTags||[];
+  const existingImgs=g.imgs||[];
+  openModal(`
+    <div class="modal-head"><div class="t">${id?'编辑客片':'上传客片'}</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div class="field"><label>关联订单</label>
+      <select id="g_order">
+        <option value="">无</option>
+        ${orders.map(o=>`<option value="${o.id}" ${g.orderId===o.id?'selected':''}>${o.date} ${esc(o.client)} ${esc(o.type)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>妆容信息</label>
+      <select id="g_makeup">
+        <option value="">请选择</option>
+        ${(DB.data.makeupTypes||[]).map(t=>`<option value="${esc(t.name)}" ${g.makeup===t.name?'selected':''}>${esc(t.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>已有图片（点击可删除）</label>
+      <div class="img-grid" id="g_existing">
+        ${existingImgs.map((src,i)=>`<div class="img-cell" style="position:relative;cursor:pointer" onclick="removeExistingImg(${i})"><img src="${esc(src)}"><div style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(255,71,87,.9);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">×</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="field"><label>上传新图片（可多选）</label>
+      <input type="file" id="g_files" accept="image/*" multiple>
+      <div id="g_preview" class="img-grid" style="margin-top:8px"></div>
+    </div>
+    <div class="field"><label>标签分类（可多选）</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${tags.map(t=>`<span class="tag ${(g.tags||[]).includes(t)?'purple':''}" style="cursor:pointer;padding:6px 14px;font-size:13px" data-tag="${esc(t)}" onclick="toggleGalleryTagSel(this)">${esc(t)}</span>`).join('')}
+      </div>
+    </div>
+    <button class="btn block" onclick="saveGallery(${id||0})">保存</button>
+  `);
+  window._removedImgs=[];
+  window._gallerySelTags=[...(g.tags||[])];
+  window.removeExistingImg=function(i){
+    window._removedImgs.push(i);
+    const cells=document.querySelectorAll('#g_existing .img-cell');
+    if(cells[i])cells[i].style.display='none';
+  };
+  window.toggleGalleryTagSel=function(el){
+    const tag=el.dataset.tag;
+    const idx=window._gallerySelTags.indexOf(tag);
+    if(idx>=0){window._gallerySelTags.splice(idx,1);el.classList.remove('purple');}
+    else{window._gallerySelTags.push(tag);el.classList.add('purple');}
+  };
+  $('#g_files').onchange=function(){
+    const pv=$('#g_preview');pv.innerHTML='';
+    Array.from(this.files).forEach(f=>{
+      const r=new FileReader();
+      r.onload=e=>{const d=document.createElement('div');d.className='img-cell';d.innerHTML='<img src="'+e.target.result+'">';pv.appendChild(d);};
+      r.readAsDataURL(f);
+    });
+  };
+}
+function saveGallery(id){
+  let tags=window._gallerySelTags||[];
+  // 未选标签时默认归入"未分类"
+  if(tags.length===0)tags=['未分类'];
+  let imgs=[];
+  if(id){
+    const old=DB.data.gallery.find(x=>x.id===id);
+    if(old&&old.imgs){
+      imgs=old.imgs.filter((_,i)=>!window._removedImgs.includes(i));
+    }
+  }
+  const files=$('#g_files').files;
+  let pending=files.length;
+  const data={orderId:+$('#g_order').value||'',makeup:$('#g_makeup').value,imgs,tags};
+  if(!pending){
+    finishSave();
+  }else{
+    Array.from(files).forEach(f=>{
+      const r=new FileReader();
+      r.onload=e=>{imgs.push(e.target.result);if(!--pending)finishSave();};
+      r.readAsDataURL(f);
+    });
+  }
+  function finishSave(){
+    data.imgs=imgs;
+    if(id){Object.assign(DB.data.gallery.find(x=>x.id===id),data);}
+    else{data.id=uid();DB.data.gallery.push(data);}
+    save();closeModal();renderMain();toast('已保存');
+  }
+}
+function delGallery(id){
+  if(!confirm('确认删除整组客片？'))return;
+  DB.data.gallery=DB.data.gallery.filter(x=>x.id!==id);
+  save();renderMain();toast('已删除');
+}
+
+/* ============================================================
+   快速录入浮层
+   ============================================================ */
+function openQuickSheet(){
+  $('#quickMask').classList.add('show');
+  $('#quickContent').innerHTML=`
+    <div class="modal-head"><div class="t">快速录入</div><button class="x" onclick="closeQuick()">✕</button></div>
+    <div class="quick-opts" style="grid-template-columns:repeat(2,1fr)">
+      <div class="quick-opt" onclick="quickPaste()">
+        <div class="ico">${ICONS.inbox}</div>
+        <div class="t">粘贴聊天</div>
+        <div class="s">智能识别预约</div>
+      </div>
+      <div class="quick-opt" onclick="quickPhoto()">
+        <div class="ico">${ICONS.gallery}</div>
+        <div class="t">照片识图</div>
+        <div class="s">截图自动识别</div>
+      </div>
+      <div class="quick-opt" onclick="quickVoice()">
+        <div class="ico">${ICONS.life}</div>
+        <div class="t">语音口述</div>
+        <div class="s">语音转文字</div>
+      </div>
+      <div class="quick-opt" onclick="quickAddInventory()">
+        <div class="ico">${ICONS.inventory}</div>
+        <div class="t">快速加物料</div>
+        <div class="s">录入化妆品</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>或直接输入文本</label>
+      <textarea id="quickText" style="min-height:80px" placeholder="粘贴客户聊天记录或输入口述内容，如：明天下午3点王小姐预约新娘妆，地址西湖区xx酒店，定金500"></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn block" onclick="quickParse()">识别预约</button>
+      <button class="btn ghost block" onclick="quickParseInventory()" style="background:var(--bg-2);color:var(--purple)">识别物料</button>
+    </div>
+    <div id="quickOcrArea" style="display:none;margin-top:12px">
+      <div class="ai-ocr-box">
+        <div class="ai-ocr-head"><span class="ai-badge">🤖 AI识别</span><span style="font-size:12px;color:var(--ink-3)">上传截图自动识别</span></div>
+        <div class="ai-ocr-drop" id="quickOcrDrop" style="padding:16px">
+          <div id="quickOcrPreview" style="display:none"></div>
+          <div id="quickOcrPlaceholder"><div style="font-size:24px">📸</div><div style="font-size:13px;font-weight:600;color:var(--ink-2);margin-top:4px">点击上传/粘贴截图</div></div>
+        </div>
+        <input type="file" id="quickOcrFile" accept="image/*" style="display:none">
+        <button class="btn block sm" id="quickOcrBtn" onclick="startQuickOCR()" style="margin-top:8px;background:linear-gradient(135deg,var(--purple),var(--accent));display:none">开始AI识别</button>
+        <div id="quickOcrLoading" style="display:none;text-align:center;padding:12px"><div style="font-size:13px;color:var(--purple);font-weight:600">⏳ AI识别中...</div></div>
+      </div>
+    </div>
+  `;
+  initQuickOCR();
+}
+function quickPhoto(){
+  const area=$('#quickOcrArea');
+  if(area.style.display==='none'){area.style.display='block';}
+  $('#quickOcrDrop').click();
+}
+let quickOcrImgData=null;
+function initQuickOCR(){
+  const drop=$('#quickOcrDrop');
+  const fileInput=$('#quickOcrFile');
+  if(!drop)return;
+  drop.onclick=()=>fileInput.click();
+  fileInput.onchange=e=>{const f=e.target.files[0];if(f)loadQuickOCRImage(f);};
+  document.addEventListener('paste',onPasteQuickOCR);
+}
+function onPasteQuickOCR(e){
+  if(!$('#quickOcrDrop'))return;
+  const items=e.clipboardData.items;
+  for(let item of items){
+    if(item.type.startsWith('image/')){
+      const f=item.getAsFile();
+      if(f)loadQuickOCRImage(f);
+      e.preventDefault();
+      break;
+    }
+  }
+}
+function loadQuickOCRImage(file){
+  const r=new FileReader();
+  r.onload=e=>{
+    quickOcrImgData=e.target.result;
+    $('#quickOcrPreview').innerHTML='<img src="'+quickOcrImgData+'" style="width:100%;border-radius:8px;max-height:160px;object-fit:cover">';
+    $('#quickOcrPreview').style.display='block';
+    $('#quickOcrPlaceholder').style.display='none';
+    $('#quickOcrBtn').style.display='flex';
+  };
+  r.readAsDataURL(file);
+}
+async function startQuickOCR(){
+  if(!quickOcrImgData){toast('请先上传截图');return;}
+  $('#quickOcrBtn').style.display='none';
+  $('#quickOcrLoading').style.display='block';
+  try{
+    if(!window.Tesseract)await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+    const{data}=await Tesseract.recognize(quickOcrImgData,'chi_sim+eng',{logger:m=>{if(m.status==='recognizing text')$('#quickOcrLoading').innerHTML='<div style="font-size:13px;color:var(--purple);font-weight:600">⏳ 识别中 '+Math.round(m.progress*100)+'%</div>';}});
+    $('#quickOcrLoading').style.display='none';
+    $('#quickOcrBtn').style.display='flex';
+    $('#quickText').value=data.text;
+    // 自动判断类型并解析
+    if(/预约|新娘|年会|妆|定金|地址/.test(data.text)){
+      quickParse();
+    }else if(/粉底|口红|高光|腮红|眉笔|眼影|色号|保质/.test(data.text)){
+      quickParseInventory();
+    }else{
+      toast('已识别文本，请选择识别类型');
+    }
+  }catch(err){
+    $('#quickOcrLoading').innerHTML='<div style="font-size:13px;color:var(--purple)">识别失败，请手动输入</div>';
+    setTimeout(()=>{$('#quickOcrLoading').style.display='none';$('#quickOcrBtn').style.display='flex';},2000);
+  }
+}
+function quickAddInventory(){
+  closeQuick();
+  setTimeout(()=>openInvModal(),100);
+}
+function quickParseInventory(){
+  const text=$('#quickText')?$('#quickText').value.trim():'';
+  if(!text){toast('请输入内容');return;}
+  // 识别物料信息
+  const nameM=text.match(/([\u4e00-\u9fa5\w]+?(?:粉底|口红|高光|腮红|眉笔|眼影|散粉|定妆|隔离|遮瑕|修容|睫毛|唇釉|唇膏))/);
+  const shadeM=text.match(/色号[：:\s]*([\w\u4e00-\u9fa5\-\.]+)/)||text.match(/(\d+号)/);
+  const dateM=text.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)||text.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+  const expireM=text.match(/保质期[至到]?\s*(\d{4})-(\d{1,2})-(\d{1,2})/)||text.match(/(\d{4})-(\d{1,2})-(\d{1,2})\s*过期/);
+  const stockM=text.match(/(\d+)\s*[瓶块支个盘]/)||text.match(/数量[：:\s]*(\d+)/)||text.match(/(\d+)\s*[瓶块支个盘]/);
+  const unitM=text.match(/[瓶块支个盘]/);
+  
+  closeQuick();
+  openInvModal();
+  setTimeout(()=>{
+    if(nameM)$('#i_name').value=nameM[1];
+    if(shadeM)$('#i_shade').value=shadeM[1];
+    if(dateM)$('#i_buy').value=`${dateM[1]}-${String(+dateM[2]).padStart(2,'0')}-${String(+dateM[3]).padStart(2,'0')}`;
+    if(expireM)$('#i_exp').value=`${expireM[1]}-${String(+expireM[2]).padStart(2,'0')}-${String(+expireM[3]).padStart(2,'0')}`;
+    if(stockM)$('#i_stock').value=stockM[1];
+    if(unitM)$('#i_unit').value=unitM[0];
+    toast('已识别物料信息，请确认');
+  },100);
+}
+function closeQuick(){
+  $('#quickMask').classList.remove('show');
+  document.removeEventListener('paste',onPasteQuickOCR);
+  quickOcrImgData=null;
+}
+function quickPaste(){
+  if(navigator.clipboard){
+    navigator.clipboard.readText().then(t=>{
+      if(t)$('#quickText').value=t;
+      else toast('剪贴板为空');
+    }).catch(()=>toast('请手动粘贴'));
+  }else{toast('请手动粘贴');}
+}
+function quickVoice(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('浏览器不支持语音，请手动输入');return;}
+  const rec=new SR();
+  rec.lang='zh-CN';
+  rec.onresult=e=>{$('#quickText').value=e.results[0][0].transcript;};
+  rec.onerror=()=>toast('语音识别失败');
+  rec.start();
+  toast('请开始说话...');
+}
+function quickParse(){
+  const text=$('#quickText').value.trim();
+  if(!text){toast('请输入内容');return;}
+  // 智能识别
+  const dateMatch=text.match(/(\d{1,2})月(\d{1,2})[日号]/);
+  const timeMatch=text.match(/(\d{1,2})[点时:：](\d{0,2})/);
+  const phoneMatch=text.match(/1\d{10}/);
+  // 定金/全款金额：匹配"定金/全款xxx"或"定金xxx元"
+  const depositMatch=text.match(/定金\s*(\d+)/)||text.match(/(\d+)\s*[元块]\s*定金/);
+  const totalMatch=text.match(/全款\s*(\d+)/)||text.match(/尾款\s*(\d+)/);
+  // 一般金额（不含时间数字）
+  const amountMatch=text.match(/(\d+)\s*[元块]/);
+  
+  const now=new Date();
+  let date=todayStr();
+  if(dateMatch){
+    date=`${now.getFullYear()}-${String(+dateMatch[1]).padStart(2,'0')}-${String(+dateMatch[2]).padStart(2,'0')}`;
+  }else{
+    if(/明天/.test(text)){const d=new Date(now);d.setDate(now.getDate()+1);date=d.toISOString().slice(0,10);}
+    else if(/后天/.test(text)){const d=new Date(now);d.setDate(now.getDate()+2);date=d.toISOString().slice(0,10);}
+    else if(/今天/.test(text)){date=todayStr();}
+  }
+  const start=timeMatch?`${String(+timeMatch[1]).padStart(2,'0')}:${timeMatch[2]&&timeMatch[2].length===2?timeMatch[2]:'00'}`:'09:00';
+  
+  // 识别妆容类型
+  let type='日常妆';
+  if(/新娘/.test(text))type='新娘妆';
+  else if(/年会/.test(text))type='年会妆';
+  else if(/约会/.test(text))type='约会妆';
+  else if(/舞台/.test(text))type='舞台妆';
+  else if(/写真/.test(text))type='写真妆';
+  
+  // 客户名：匹配"xx小姐/女士"，先去掉时间/日期干扰词
+  const textForName=text.replace(/\d{1,2}\s*[点时]\s*/g,'').replace(/[上下]午\s*/g,'').replace(/\d{1,2}[日号]\s*/g,'').replace(/[今明后]天\s*/g,'').replace(/\d+月\s*/g,'');
+  const name=textForName.match(/([\u4e00-\u9fa5]{1,3}(?:小姐|女士))/);
+  
+  closeQuick();
+  openBookingModal();
+  setTimeout(()=>{
+    $('#b_date').value=date;
+    $('#b_start').value=start;
+    if(name)$('#b_client').value=name[1];
+    if(phoneMatch)$('#b_phone').value=phoneMatch[0];
+    $('#b_type').value=type;
+    // 地址
+    const addrMatch=text.match(/地址[是为：:\s]*([\u4e00-\u9fa5\w\d路街号大厦小区]+)/);
+    if(addrMatch)$('#b_addr').value=addrMatch[1];
+    // 定金
+    if(depositMatch)$('#b_deposit').value=depositMatch[1];
+    else if(amountMatch)$('#b_deposit').value=amountMatch[1];
+    // 全款
+    if(totalMatch)$('#b_total').value=totalMatch[1];
+  },50);
+}
+
+/* ============================================================
+   侧边栏自定义
+   ============================================================ */
+/* ============================================================
+   弹窗
+   ============================================================ */
+function openModal(html){
+  $('#modalContent').innerHTML=html;
+  $('#modalMask').classList.add('show');
+}
+function closeModal(){
+  $('#modalMask').classList.remove('show');
+  document.removeEventListener('paste',onPasteOCR);
+  ocrImgData=null;
+}
+$('#modalMask').addEventListener('click',e=>{if(e.target.id==='modalMask')closeModal();});
+$('#quickMask').addEventListener('click',e=>{if(e.target.id==='quickMask')closeQuick();});
+
+/* ============================================================
+   事件绑定
+   ============================================================ */
+$('#menuBtn').onclick=()=>{$('#sidebar').classList.add('open');$('#sidebarOverlay').classList.add('show');loadShareUrl();};
+$('#sidebarOverlay').onclick=()=>{$('#sidebar').classList.remove('open');$('#sidebarOverlay').classList.remove('show');};
+$('#fab').onclick=openQuickSheet;
+
+/* ============================================================
+   启动
+   ============================================================ */
+renderNav();
+renderTabbar();
+renderMain();
+
+// 数据备份提醒（每7天提醒一次）
+(function(){
+  const last=localStorage.getItem('mua_backup_remind');
+  const now=Date.now();
+  if(!last||now-last>7*86400000){
+    localStorage.setItem('mua_backup_remind',now);
+  }
+})();
+
+/* 数据导出/导入 */
+function exportData(){
+  const data=DB.data;
+  const json=JSON.stringify(data,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const ds=todayStr();
+  a.download='mua-backup-'+ds+'.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('数据已导出');
+}
+// 导入时按 ID 合并到本机数据：添加对方数据，不整体覆盖，保留本机原有数据与配置
+function mergeImport(imp){
+  const cur=DB.data;
+  ['bookings','transactions','inventory','gallery','inbox'].forEach(k=>{
+    const map=new Map((cur[k]||[]).filter(x=>x&&x.id!=null).map(x=>[x.id,x]));
+    (imp[k]||[]).forEach(it=>{ if(it&&it.id!=null) map.set(it.id, it); });
+    cur[k]=Array.from(map.values());
+  });
+  // 配置项（工作室名/栏目/品类等）保留本机原有，不被导入文件覆盖
+  return cur;
+}
+function importData(){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.json';
+  input.onchange=function(){
+    const file=this.files[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        const imported=JSON.parse(e.target.result);
+        if(imported.bookings||imported.transactions||imported.inventory||imported.gallery||imported.inbox){
+          DB.data=mergeImport(imported);
+          DB.data._syncTS=Date.now();
+          save();
+          renderMain();renderNav();renderTabbar();
+          toast('已合并导入（保留原有数据）');
+        }else{toast('无效的备份文件');}
+      }catch(ex){toast('文件解析失败');}
+    };
+    reader.readAsText(file);
+  };
+  document.body.appendChild(input);
+  input.click();
+  document.body.removeChild(input);
+}
+/* 当前分享链接：从后端实时读取隧道 URL */
+function loadShareUrl(){
+  const box=$('#shareBox'), urlEl=$('#shareUrl');
+  if(!box||!urlEl)return;
+  try{
+    fetch('/api/url').then(r=>r.json()).then(d=>{
+      if(d&&d.appUrl){
+        urlEl.textContent=d.appUrl;
+        urlEl.dataset.url=d.appUrl;
+        box.style.display='block';
+      }else{
+        urlEl.textContent='暂不可用，请稍后重试';
+        box.style.display='block';
+      }
+    }).catch(()=>{urlEl.textContent='加载失败';box.style.display='block';});
+  }catch(e){}
+}
+function copyShareUrl(){
+  const el=$('#shareUrl');
+  const url=el&&el.dataset.url;
+  if(!url)return;
+  if(navigator.share){
+    navigator.share({title:'MUA 工作台',url:url}).catch(()=>{});
+    return;
+  }
+  try{
+    navigator.clipboard.writeText(url).then(()=>toast('链接已复制')).catch(()=>fallbackCopy(url));
+  }catch(e){fallbackCopy(url);}
+}
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');
+  ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');toast('链接已复制');}catch(e){toast('复制失败，请手动复制');}
+  document.body.removeChild(ta);
+}
+</script>
+</body>
+</html>
