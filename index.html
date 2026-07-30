@@ -602,19 +602,32 @@ const ENC={
 function bytesToB64(bytes){let s='';const c=0x8000;for(let i=0;i<bytes.length;i+=c){s+=String.fromCharCode.apply(null,bytes.subarray(i,i+c));}return btoa(s);}
 function b64ToBytes(b64){const s=atob(b64);const out=new Uint8Array(s.length);for(let i=0;i<s.length;i++)out[i]=s.charCodeAt(i);return out;}
 
-// 同步口令：派生密钥仅保存在本地内存，刷新页面后需重新输入；不写入仓库或网页以外的任何地方。
+// 同步口令：派生密钥保存在本地内存；同时记在本机 localStorage（mua_pass_cfg），
+// 这样刷新/重开页面会自动派生、不再弹窗打断同步。口令绝不写入仓库或网页以外的任何地方，只在你这台手机上。
+const PASS={
+  KEY:'mua_pass_cfg',
+  get(){ try{ return localStorage.getItem(this.KEY)||''; }catch(e){ return ''; } },
+  save(p){ try{ if(p) localStorage.setItem(this.KEY,p); }catch(e){} },
+  clear(){ try{ localStorage.removeItem(this.KEY); }catch(e){} }
+};
 let _keyPromise=null,_cloudOff=false,_lastPrompt=0;
-function ensureKey(){
+function ensureKey(force){
   if(!GH.enabled||_cloudOff) return Promise.resolve();
-  if(ENC._key) return Promise.resolve();
+  if(ENC._key&&!force) return Promise.resolve();
   if(_keyPromise) return _keyPromise;
+  // 本机已存过同步口令：刷新/重开后自动派生，静默恢复同步，不再弹窗打断用户
+  const saved=PASS.get();
+  if(saved&&!force){
+    _keyPromise=ENC.deriveKey(saved).then(()=>{_keyPromise=null;}).catch(()=>{PASS.clear();});
+    return _keyPromise;
+  }
   const now=Date.now();
   if(now-_lastPrompt<60000) return Promise.resolve(); // 冷却，避免轮询时频繁弹窗
   _lastPrompt=now;
   _keyPromise=new Promise((resolve)=>{
     openPassModal((pass)=>{
       if(!pass){_keyPromise=null;_cloudOff=true;resolve();return;}
-      ENC.deriveKey(pass).then(()=>{_keyPromise=null;resolve();}).catch(()=>{_keyPromise=null;toast('口令设置失败');resolve();});
+      ENC.deriveKey(pass).then(()=>{ PASS.save(pass); _keyPromise=null; resolve(); }).catch(()=>{ _keyPromise=null; toast('口令设置失败'); resolve(); });
     });
   });
   return _keyPromise;
@@ -625,7 +638,7 @@ function openPassModal(cb,err){
     +`<div style="padding:14px 16px;font-size:13px;color:var(--ink-2);line-height:1.7">`
     +(err?`<div style="color:#e23;margin-bottom:8px">${esc(err)}</div>`:'')
     +`设置一个<b>同步口令</b>，用于加密云端数据。<br>两台手机请用<b>同一个口令</b>才能互相解密同步。<br>`
-    +`<span style="color:var(--ink-3)">口令只存在你手机上；忘记后云端数据将无法解密，但本机数据仍在、也可导出备份。</span>`
+    +`<span style="color:var(--ink-3)">口令只保存在你这台手机（本机），不会上传；记住后刷新无需重输。忘记口令后云端密文将无法解密，但本机数据仍在、也可导出备份。</span>`
     +`</div>`
     +`<div style="padding:0 16px 12px"><input id="passInput" type="password" placeholder="输入同步口令" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:15px"></div>`
     +`<div class="modal-foot"><button class="btn ghost" onclick="closePassModal()">取消</button><button class="btn" onclick="submitPass()">确定</button></div>`;
@@ -635,7 +648,7 @@ function openPassModal(cb,err){
 }
 function closePassModal(){document.querySelector('#modalMask').classList.remove('show');const cb=window.__passCb;window.__passCb=null;if(cb){_keyPromise=null;_cloudOff=true;cb(null);}}
 function submitPass(){const inp=document.querySelector('#passInput');const v=inp?inp.value:'';if(!v){toast('请输入口令');return;}const cb=window.__passCb;window.__passCb=null;document.querySelector('#modalMask').classList.remove('show');if(cb)cb(v);}
-function resetPass(){ENC._key=null;_cloudOff=false;ensureKey().then(()=>{if(ENC._key){toast('同步口令已更新');syncPoll();}});}
+function resetPass(){ENC._key=null;_cloudOff=false;ensureKey(true).then(()=>{if(ENC._key){toast('同步口令已更新');syncPoll();}});}
 function openCloudSetup(){
   const cur=CLOUD.get()||{};
   const m=$('#modalContent');
@@ -675,7 +688,7 @@ async function cloudGet(){
     // 仓库里只存密文，拉取后本地解密
     let data;
     try{ data=await ENC.decrypt(atob(j.content.replace(/\s/g,''))); }
-    catch(e){ ENC._key=null; throw new Error('解密失败：同步口令可能不正确'); }
+    catch(e){ ENC._key=null; PASS.clear(); throw new Error('解密失败：同步口令可能不正确，请点“重置口令”重新输入'); }
     return {sha:j.sha, data};
   }else{
     const res=await fetch('/api/data');
