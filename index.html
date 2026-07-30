@@ -41,7 +41,10 @@
   --safe-t:env(safe-area-inset-top, 0px);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;}
+html,body{height:100%;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;}
+/* 禁用 iOS Safari 在页面顶部下拉触发的“整页重新加载”——
+   该操作一旦因 github.io 偶发连不上就会弹“丢失网络连接”并清空内容。
+   应用内同步统一用顶部「同步」按钮，无需下拉刷新。 */
 body{
   font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;
   background:var(--bg);
@@ -452,7 +455,7 @@ img{max-width:100%;display:block;}
 <script>
 // 应用版本号：每次部署新功能就 +1。已加载过旧版本的用户，下次打开本页会自动刷新拿到新代码，
 // 不必再手动清缓存。（注意：应用内“同步/刷新”只拉数据、不更新代码，改了功能必须重载页面。）
-const APP_VER='20260730.4';
+const APP_VER='20260730.6';
 (function(){
   try{
     var sv=localStorage.getItem('mua_app_ver');
@@ -606,18 +609,21 @@ const GH = {
   token: '',
   owner: 'Sserena001210',
   repo: 'mua-workbench',
-  path: 'data.json'
+  path: 'data.json',
+  // 同步后端地址。默认直连 GitHub；若你的网络连不上 api.github.com，
+  // 可改成“国内可达的同步代理/Worker 地址”（数据仍存 GitHub，无需迁移）。
+  apiBase: 'https://api.github.com'
 };
 const CLOUD = {
   KEY:'mua_cloud_cfg',
   load(){
     try{
       const o=JSON.parse(localStorage.getItem(this.KEY)||'null');
-      if(o&&o.token){ GH.enabled=true; GH.token=o.token; if(o.owner)GH.owner=o.owner; if(o.repo)GH.repo=o.repo; }
+      if(o&&o.token){ GH.enabled=true; GH.token=o.token; if(o.owner)GH.owner=o.owner; if(o.repo)GH.repo=o.repo; if(o.apiBase)GH.apiBase=o.apiBase; }
       else { GH.enabled=false; GH.token=''; }
     }catch(e){ GH.enabled=false; GH.token=''; }
   },
-  save(o){ localStorage.setItem(this.KEY, JSON.stringify({token:o.token,owner:o.owner||GH.owner,repo:o.repo||GH.repo})); this.load(); },
+  save(o){ localStorage.setItem(this.KEY, JSON.stringify({token:o.token,owner:o.owner||GH.owner,repo:o.repo||GH.repo,apiBase:o.apiBase||GH.apiBase})); this.load(); },
   get(){ try{return JSON.parse(localStorage.getItem(this.KEY)||'null');}catch(e){return null;} }
 };
 // ===== 云端数据加密（AES-GCM + PBKDF2）=====
@@ -718,6 +724,8 @@ function openCloudSetup(){
     +`<span style="color:#d33;font-weight:600">连接后还需设置“同步口令”——请和对方手机输入【完全相同】的文字，否则互相看不到数据。</span></div>`
     +`<div style="padding:0 16px 8px"><input id="cloudToken" type="password" placeholder="GitHub 访问令牌（PAT）" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
     +`<div style="padding:0 16px 10px;display:flex;gap:8px"><input id="cloudOwner" placeholder="用户名" value="${esc(cur.owner||'Sserena001210')}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"><input id="cloudRepo" placeholder="仓库名" value="${esc(cur.repo||'mua-workbench')}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
+    +`<div style="padding:0 16px 6px"><input id="cloudApi" placeholder="同步服务器地址（默认 https://api.github.com；连不上时填国内代理）" value="${esc(cur.apiBase||'https://api.github.com')}" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:13px"></div>`
+    +`<div style="padding:0 16px 10px"><button class="btn ghost" style="width:100%" onclick="testSyncConnection()">测试同步连接</button><div id="connTest" style="font-size:12px;color:var(--ink-3);margin-top:6px;min-height:16px"></div></div>`
     +`<div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="submitCloudSetup()">保存并连接</button></div>`;
   $('#modalMask').classList.add('show');
   const inp=$('#cloudToken'); if(inp) inp.focus();
@@ -726,22 +734,49 @@ function submitCloudSetup(){
   const tok=($('#cloudToken')?$('#cloudToken').value:'').trim();
   const owner=($('#cloudOwner')?$('#cloudOwner').value:'').trim()||'Sserena001210';
   const repo=($('#cloudRepo')?$('#cloudRepo').value:'').trim()||'mua-workbench';
+  const apiBase=($('#cloudApi')?$('#cloudApi').value:'').trim()||'https://api.github.com';
   if(!tok){toast('请填写 GitHub 令牌');return;}
-  CLOUD.save({token:tok,owner,repo});
+  CLOUD.save({token:tok,owner,repo,apiBase});
   $('#modalMask').classList.remove('show');
   toast('已连接，正在同步…');
   ENC._key=null; _cloudOff=false;
   ensureKey().then(()=>{ if(ENC._key) syncPoll(); });
 }
+// 同步连接自测：直连后端地址，验证你的网络能否访问同步服务器
+async function testSyncConnection(){
+  const tok=($('#cloudToken')?$('#cloudToken').value:'').trim();
+  const owner=($('#cloudOwner')?$('#cloudOwner').value:'').trim()||'Sserena001210';
+  const repo=($('#cloudRepo')?$('#cloudRepo').value:'').trim()||'mua-workbench';
+  const apiBase=($('#cloudApi')?$('#cloudApi').value:'').trim()||'https://api.github.com';
+  const el=$('#connTest'); if(!el) return;
+  if(!tok){ el.style.color='#d33'; el.textContent='请先填写令牌再测试'; return; }
+  el.style.color='var(--ink-3)'; el.textContent='正在测试连接 '+apiBase+' …';
+  const url=apiBase.replace(/\/+$/,'')+'/repos/'+owner+'/'+repo+'/contents/'+'data.json';
+  const t0=Date.now();
+  try{
+    const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(url,{cache:'no-store',signal:ctrl.signal,headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+tok}});
+    clearTimeout(to);
+    const ms=Date.now()-t0;
+    if(r.status===200||r.status===404){ el.style.color='#1a9e5a'; el.textContent='✓ 连接成功（'+ms+'ms）。该地址在你的网络下可访问，可保存。'; }
+    else if(r.status===401||r.status===403){ el.style.color='#d33'; el.textContent='✗ 令牌无效或无权限（HTTP '+r.status+'）。请检查令牌。'; }
+    else { el.style.color='#d33'; el.textContent='✗ 服务器返回 HTTP '+r.status+'（'+ms+'ms）。'; }
+  }catch(e){
+    const ms=Date.now()-t0;
+    el.style.color='#d33';
+    el.textContent='✗ 无法连接（'+ms+'ms，'+ (e.name==='AbortError'?'超时':'网络错误') +'）。你的网络访问不到这个地址——请改用国内可达的同步代理。';
+  }
+}
 
 let _cloudSha=null;
+const apiURL=p=>(GH.apiBase||'https://api.github.com').replace(/\/+$/,'')+'/'+p.replace(/^\/+/,'');
 async function cloudGet(){
   if(GH.enabled){
     await ensureKey();
     if(_cloudOff) throw new Error('云端已关闭');
     // cache:'no-store' 必须：GitHub Contents API 带缓存头，浏览器会缓存 GET，
     // 导致另一台设备刚写入的数据在轮询窗口内读不到（双向同步失效）
-    const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{cache:'no-store',headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token}});
+    const r=await fetch(apiURL(`repos/${GH.owner}/${GH.repo}/contents/${GH.path}`),{cache:'no-store',headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token}});
     if(r.status===404) return null;                 // 仓库里还没有数据文件
     if(!r.ok) throw new Error('gh get '+r.status);
     const j=await r.json();
@@ -767,7 +802,7 @@ async function cloudPut(data, sha, _try){
     const body={message:'sync '+new Date().toISOString(), content:b64};
     if(sha) body.sha=sha;
     // 两端几乎同时推送会出现 sha 冲突(409)：重新拉取→合并→再推，最多重试 5 次，避免丢数据
-    const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{method:'PUT',cache:'no-store',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(body)});
+    const r=await fetch(apiURL(`repos/${GH.owner}/${GH.repo}/contents/${GH.path}`),{method:'PUT',cache:'no-store',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(body)});
     if(r.status===409){
       if(_try>=5) throw new Error('gh put 409 重试超限');
       const cur=await cloudGet();
