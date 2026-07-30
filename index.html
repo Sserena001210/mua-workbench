@@ -714,8 +714,9 @@ async function syncPush(){
 // 后台轮询：近实时同步，无需手动刷新
 let _syncTimer=null;
 async function syncPoll(){
-  // 编辑弹窗打开时不打断用户
-  if(document.querySelector('.modal-mask.show')||document.querySelector('.quick-sheet')) return;
+  // 编辑弹窗/快捷面板打开时不打断用户（二者都是 .modal-mask，打开时带 .show；
+  // 注意不能判断 .quick-sheet 本身，该容器常驻 DOM、永远存在，会导致轮询永远 early-return）
+  if(document.querySelector('.modal-mask.show')) return;
   try{
     const c=await cloudGet();
     if(!c||!c.data||!cloudHasData(c.data)) return;
