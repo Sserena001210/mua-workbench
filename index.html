@@ -410,6 +410,7 @@ img{max-width:100%;display:block;}
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
     </button>
   </div>
+  <div class="sync-err" id="syncErr" style="display:none;background:#fff3f2;color:#d33;border-bottom:1px solid #f3c2bd;font-size:12.5px;line-height:1.55;padding:8px 12px"></div>
   <div class="main-inner" id="mainInner"></div>
 </div>
 
@@ -610,13 +611,22 @@ const PASS={
   save(p){ try{ if(p) localStorage.setItem(this.KEY,p); }catch(e){} },
   clear(){ try{ localStorage.removeItem(this.KEY); }catch(e){} }
 };
-let _keyPromise=null,_cloudOff=false,_lastPrompt=0;
+let _keyPromise=null,_cloudOff=false,_lastPrompt=0,_passMismatch=false;
 function ensureKey(force){
   if(!GH.enabled||_cloudOff) return Promise.resolve();
-  if(ENC._key&&!force) return Promise.resolve();
+  if(ENC._key&&!force&&!_passMismatch) return Promise.resolve();
   if(_keyPromise) return _keyPromise;
-  // 本机已存过同步口令：刷新/重开后自动派生，静默恢复同步，不再弹窗打断用户
   const saved=PASS.get();
+  // 口令不一致时：绝不自动弹窗打断用户（否则会陷入“看不到+反复填”的死循环），
+  // 只在顶部显示红色提示条；用户点“重置口令”时才会 force 弹窗并带错误说明。
+  if(_passMismatch&&!force){
+    if(saved){
+      _keyPromise=ENC.deriveKey(saved).then(()=>{_keyPromise=null;}).catch(()=>{PASS.clear();});
+      return _keyPromise;
+    }
+    return Promise.resolve();
+  }
+  // 本机已存过同步口令：刷新/重开后自动派生，静默恢复同步，不再弹窗打断用户
   if(saved&&!force){
     _keyPromise=ENC.deriveKey(saved).then(()=>{_keyPromise=null;}).catch(()=>{PASS.clear();});
     return _keyPromise;
@@ -627,17 +637,20 @@ function ensureKey(force){
   _keyPromise=new Promise((resolve)=>{
     openPassModal((pass)=>{
       if(!pass){_keyPromise=null;_cloudOff=true;resolve();return;}
-      ENC.deriveKey(pass).then(()=>{ PASS.save(pass); _keyPromise=null; resolve(); }).catch(()=>{ _keyPromise=null; toast('口令设置失败'); resolve(); });
-    });
+      ENC.deriveKey(pass).then(()=>{ PASS.save(pass); clearSyncError(); _passMismatch=false; _keyPromise=null; resolve(); }).catch(()=>{ _keyPromise=null; toast('口令设置失败'); resolve(); });
+    }, _passMismatch?'当前同步口令与云端不一致，请输入和对方【完全相同】的口令':'');
   });
   return _keyPromise;
 }
+function showSyncError(msg){ const el=document.querySelector('#syncErr'); if(el){ el.textContent=msg; el.style.display='block'; } toast(msg); }
+function clearSyncError(){ const el=document.querySelector('#syncErr'); if(el) el.style.display='none'; }
 function openPassModal(cb,err){
   const m=document.querySelector('#modalContent');
   m.innerHTML=`<div class="modal-head"><div class="t">同步口令</div><button class="x" onclick="closePassModal()">✕</button></div>`
     +`<div style="padding:14px 16px;font-size:13px;color:var(--ink-2);line-height:1.7">`
-    +(err?`<div style="color:#e23;margin-bottom:8px">${esc(err)}</div>`:'')
-    +`设置一个<b>同步口令</b>，用于加密云端数据。<br>两台手机请用<b>同一个口令</b>才能互相解密同步。<br>`
+    +(err?`<div style="color:#e23;margin-bottom:8px;font-weight:600">${esc(err)}</div>`:'')
+    +`<b style="color:#d33">⚠️ 两台手机必须输入【完全相同】的同步口令</b>，否则互相解不开、看不到对方的数据。<br>`
+    +`同步口令用于加密云端数据，它不是账号密码，而是你和对方约定好的一串相同文字。<br>`
     +`<span style="color:var(--ink-3)">口令只保存在你这台手机（本机），不会上传；记住后刷新无需重输。忘记口令后云端密文将无法解密，但本机数据仍在、也可导出备份。</span>`
     +`</div>`
     +`<div style="padding:0 16px 12px"><input id="passInput" type="password" placeholder="输入同步口令" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:15px"></div>`
@@ -655,7 +668,8 @@ function openCloudSetup(){
   m.innerHTML=`<div class="modal-head"><div class="t">连接云端同步</div><button class="x" onclick="closeModal()">✕</button></div>`
     +`<div style="padding:14px 16px;font-size:13px;color:var(--ink-2);line-height:1.7">`
     +`填入 GitHub 访问令牌（fine-grained，仅授权本仓库 Contents 读写）。令牌只保存在你本机浏览器，不会写进网页源码，也不会上传。<br>`
-    +`<span style="color:var(--ink-3)">用户名与仓库名已内置，通常无需修改。</span></div>`
+    +`<span style="color:var(--ink-3)">用户名与仓库名已内置，通常无需修改。</span><br>`
+    +`<span style="color:#d33;font-weight:600">连接后还需设置“同步口令”——请和对方手机输入【完全相同】的文字，否则互相看不到数据。</span></div>`
     +`<div style="padding:0 16px 8px"><input id="cloudToken" type="password" placeholder="GitHub 访问令牌（PAT）" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
     +`<div style="padding:0 16px 10px;display:flex;gap:8px"><input id="cloudOwner" placeholder="用户名" value="${esc(cur.owner||'Sserena001210')}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"><input id="cloudRepo" placeholder="仓库名" value="${esc(cur.repo||'mua-workbench')}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
     +`<div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="submitCloudSetup()">保存并连接</button></div>`;
@@ -687,8 +701,8 @@ async function cloudGet(){
     const j=await r.json();
     // 仓库里只存密文，拉取后本地解密
     let data;
-    try{ data=await ENC.decrypt(atob(j.content.replace(/\s/g,''))); }
-    catch(e){ ENC._key=null; PASS.clear(); throw new Error('解密失败：同步口令可能不正确，请点“重置口令”重新输入'); }
+    try{ data=await ENC.decrypt(atob(j.content.replace(/\s/g,''))); _passMismatch=false; clearSyncError(); }
+    catch(e){ ENC._key=null; _passMismatch=true; showSyncError('同步口令与对方不一致：请在“设置 ⚙ → 重置口令”里输入和对方【完全相同】的同步口令，即可恢复互看对方数据'); throw new Error('解密失败：同步口令与云端不一致'); }
     return {sha:j.sha, data};
   }else{
     const res=await fetch('/api/data');
