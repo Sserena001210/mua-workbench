@@ -780,7 +780,7 @@ async function syncPush(){
     localStorage.setItem(DB._k,JSON.stringify(DB.data));
     _cloudSha=await cloudPut(DB.data,_cloudSha);
     setSyncStatus('ok');
-  }catch(e){console.warn('推送云端失败',e); setSyncStatus('err','推送失败');}
+  }catch(e){console.warn('推送云端失败',e); setSyncStatus('err', _passMismatch?'口令不一致':'推送失败');}
   _pushing=false;
 }
 
@@ -808,7 +808,7 @@ async function syncPoll(){
       renderNav();renderTabbar();
     }
     setSyncStatus('ok');
-  }catch(e){console.warn('轮询同步失败',e); setSyncStatus('err','同步失败');}
+  }catch(e){console.warn('轮询同步失败',e); setSyncStatus('err', _passMismatch?'口令不一致':'同步失败');}
 }
 function startSync(){ if(_syncTimer) return; _syncTimer=setInterval(syncPoll, 6000); }
 async function manualSync(){ toast('同步中…'); await syncPoll(); toast('已同步'); }
