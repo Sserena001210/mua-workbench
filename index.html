@@ -618,7 +618,7 @@ function ensureKey(){
   return _keyPromise;
 }
 function openPassModal(cb,err){
-  const m=$('#modalContent');
+  const m=document.querySelector('#modalContent');
   m.innerHTML=`<div class="modal-head"><div class="t">同步口令</div><button class="x" onclick="closePassModal()">✕</button></div>`
     +`<div style="padding:14px 16px;font-size:13px;color:var(--ink-2);line-height:1.7">`
     +(err?`<div style="color:#e23;margin-bottom:8px">${esc(err)}</div>`:'')
@@ -627,12 +627,12 @@ function openPassModal(cb,err){
     +`</div>`
     +`<div style="padding:0 16px 12px"><input id="passInput" type="password" placeholder="输入同步口令" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:15px"></div>`
     +`<div class="modal-foot"><button class="btn-ghost" onclick="closePassModal()">取消</button><button class="btn-primary" onclick="submitPass()">确定</button></div>`;
-  $('#modalMask').classList.add('show');
-  const inp=$('#passInput'); if(inp) inp.focus();
+  document.querySelector('#modalMask').classList.add('show');
+  const inp=document.querySelector('#passInput'); if(inp) inp.focus();
   window.__passCb=cb;
 }
-function closePassModal(){$('#modalMask').classList.remove('show');const cb=window.__passCb;window.__passCb=null;if(cb){_keyPromise=null;_cloudOff=true;cb(null);}}
-function submitPass(){const v=$('#passInput')?$('#passInput').value:'';if(!v){toast('请输入口令');return;}const cb=window.__passCb;window.__passCb=null;$('#modalMask').classList.remove('show');if(cb)cb(v);}
+function closePassModal(){document.querySelector('#modalMask').classList.remove('show');const cb=window.__passCb;window.__passCb=null;if(cb){_keyPromise=null;_cloudOff=true;cb(null);}}
+function submitPass(){const inp=document.querySelector('#passInput');const v=inp?inp.value:'';if(!v){toast('请输入口令');return;}const cb=window.__passCb;window.__passCb=null;document.querySelector('#modalMask').classList.remove('show');if(cb)cb(v);}
 function resetPass(){ENC._key=null;_cloudOff=false;ensureKey().then(()=>{if(ENC._key){toast('同步口令已更新');syncPoll();}});}
 function openCloudSetup(){
   const cur=CLOUD.get()||{};
