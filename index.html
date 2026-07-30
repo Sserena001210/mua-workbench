@@ -664,7 +664,9 @@ async function cloudGet(){
   if(GH.enabled){
     await ensureKey();
     if(_cloudOff) throw new Error('云端已关闭');
-    const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token}});
+    // cache:'no-store' 必须：GitHub Contents API 带缓存头，浏览器会缓存 GET，
+    // 导致另一台设备刚写入的数据在轮询窗口内读不到（双向同步失效）
+    const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{cache:'no-store',headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token}});
     if(r.status===404) return null;                 // 仓库里还没有数据文件
     if(!r.ok) throw new Error('gh get '+r.status);
     const j=await r.json();
@@ -688,7 +690,7 @@ async function cloudPut(data, sha, _try){
     const body={message:'sync '+new Date().toISOString(), content:btoa(payload)};
     if(sha) body.sha=sha;
     // 两端几乎同时推送会出现 sha 冲突(409)：重新拉取→合并→再推，最多重试 5 次，避免丢数据
-    const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(body)});
+    const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{method:'PUT',cache:'no-store',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(body)});
     if(r.status===409){
       if(_try>=5) throw new Error('gh put 409 重试超限');
       const cur=await cloudGet();
