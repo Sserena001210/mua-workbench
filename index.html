@@ -396,6 +396,10 @@ img{max-width:100%;display:block;}
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
       设置同步口令
     </button>
+    <button class="add-nav" onclick="reloadApp()" style="margin-top:4px">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      重新加载（更新应用）
+    </button>
     <div class="share-box" id="shareBox" style="margin-top:10px;display:none">
       <div class="share-label">当前分享链接</div>
       <div class="share-url" id="shareUrl">加载中…</div>
@@ -879,6 +883,9 @@ const money=n=>'¥'+Number(n||0).toLocaleString('zh-CN',{maximumFractionDigits:0
 const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
 function save(){DB.save();}
+// 强制重新加载页面并绕过浏览器 HTML 缓存，用于“应用更新后”拿到最新代码。
+// 注意：应用内“同步/刷新”只从云端拉数据，不会更新本页代码；改了功能必须重载页面。
+function reloadApp(){ const u=new URL(location.href); u.searchParams.set('v',Date.now()); location.href=u.toString(); }
 
 /* 图标库 */
 const ICONS={
