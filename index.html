@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#E8E4DF">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>化妆师工作台</title>
 <style>
 /* ========== 多巴胺配色系统 ========== */
@@ -354,6 +357,12 @@ img{max-width:100%;display:block;}
 .icon-opt svg{width:20px;height:20px;}
 /* 工作室名编辑 */
 .studio-input{font-size:18px;font-weight:800;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;width:100%;color:var(--accent);}
+/* 云端同步状态指示 */
+.sync-status{font-size:11px;line-height:1;padding:4px 8px;border-radius:10px;white-space:nowrap;color:var(--ink-3);background:var(--bg-2);align-self:center;}
+.sync-status.busy{color:var(--info);background:#e7f0ff;}
+.sync-status.ok{color:#1a9c5b;background:#e6f7ee;}
+.sync-status.err{color:#d33;background:#fff0ef;font-weight:600;}
+.sync-status.off{color:var(--ink-3);background:var(--bg-2);}
 </style>
 </head>
 <body>
@@ -409,6 +418,7 @@ img{max-width:100%;display:block;}
     <button class="menu-btn" id="syncBtn" onclick="manualSync()" title="同步刷新" style="width:36px">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
     </button>
+    <span id="syncStatus" class="sync-status" title="云端同步状态"></span>
   </div>
   <div class="sync-err" id="syncErr" style="display:none;background:#fff3f2;color:#d33;border-bottom:1px solid #f3c2bd;font-size:12.5px;line-height:1.55;padding:8px 12px"></div>
   <div class="main-inner" id="mainInner"></div>
@@ -706,7 +716,7 @@ async function cloudGet(){
     // 仓库里只存密文，拉取后本地解密
     let data;
     try{ data=await ENC.decrypt(atob(j.content.replace(/\s/g,''))); _passMismatch=false; clearSyncError(); }
-    catch(e){ ENC._key=null; _passMismatch=true; showSyncError('同步口令与对方不一致：请在“设置 ⚙ → 重置口令”里输入和对方【完全相同】的同步口令，即可恢复互看对方数据'); throw new Error('解密失败：同步口令与云端不一致'); }
+    catch(e){ ENC._key=null; _passMismatch=true; setSyncStatus('err','口令不一致'); showSyncError('同步口令与对方不一致：请在“设置 ⚙ → 重置口令”里输入和对方【完全相同】的同步口令，即可恢复互看对方数据'); throw new Error('解密失败：同步口令与云端不一致'); }
     return {sha:j.sha, data};
   }else{
     const res=await fetch('/api/data');
@@ -721,7 +731,7 @@ async function cloudPut(data, sha, _try){
     if(_cloudOff) throw new Error('云端已关闭');
     const payload=await ENC.encrypt(data); // 加密后再上传，仓库只存密文
     const b64=btoa(payload);
-    if(b64.length>950000){ toast('同步内容过大（客片图片太多/太大），无法上传云端，请减少图片数量'); throw new Error('payload too large'); }
+    if(b64.length>950000){ toast('同步内容过大（客片图片太多/太大），无法上传云端，请减少图片数量'); setSyncStatus('err','内容过大'); throw new Error('payload too large'); }
     const body={message:'sync '+new Date().toISOString(), content:b64};
     if(sha) body.sha=sha;
     // 两端几乎同时推送会出现 sha 冲突(409)：重新拉取→合并→再推，最多重试 5 次，避免丢数据
@@ -740,19 +750,37 @@ async function cloudPut(data, sha, _try){
   }
 }
 
+// 同步状态指示：把“为什么不同步”变成看得见的信息
+function setSyncStatus(kind, text){
+  const el=document.querySelector('#syncStatus'); if(!el) return;
+  el.dataset.busy = (kind==='busy')?'1':'';
+  el.className='sync-status '+(kind||'');
+  if(text) el.textContent=text;
+  if(kind==='ok'){ window.__lastSync=Date.now(); if(!text) el.textContent='已同步 ✓'; }
+}
+// 每秒刷新“Xs前”，让用户直观看到同步一直在跑
+setInterval(()=>{
+  const el=document.querySelector('#syncStatus');
+  if(!el||el.dataset.busy||!window.__lastSync) return;
+  const s=Math.floor((Date.now()-window.__lastSync)/1000);
+  el.textContent='已同步 · '+s+'s前'; el.className='sync-status ok';
+},1000);
+
 // 保存时与云端合并后写回（带简单节流，避免并发请求过多）
 let _pushing=false;
 async function syncPush(){
   if(_pushing) return; _pushing=true;
+  setSyncStatus('busy','同步中…');
   try{
     const c=await cloudGet();
     if(c&&c.data&&cloudHasData(c.data)){ DB.data=mergeData(DB.data, c.data); _cloudSha=c.sha||_cloudSha; }
-  }catch(e){console.warn('拉取云端失败',e);}
+  }catch(e){console.warn('拉取云端失败',e); setSyncStatus('err','拉取失败');}
   try{
     DB.data._syncTS=Date.now();
     localStorage.setItem(DB._k,JSON.stringify(DB.data));
     _cloudSha=await cloudPut(DB.data,_cloudSha);
-  }catch(e){console.warn('推送云端失败',e);}
+    setSyncStatus('ok');
+  }catch(e){console.warn('推送云端失败',e); setSyncStatus('err','推送失败');}
   _pushing=false;
 }
 
@@ -762,9 +790,10 @@ async function syncPoll(){
   // 编辑弹窗/快捷面板打开时不打断用户（二者都是 .modal-mask，打开时带 .show；
   // 注意不能判断 .quick-sheet 本身，该容器常驻 DOM、永远存在，会导致轮询永远 early-return）
   if(document.querySelector('.modal-mask.show')) return;
+  setSyncStatus('busy','同步中…');
   try{
     const c=await cloudGet();
-    if(!c||!c.data||!cloudHasData(c.data)) return;
+    if(!c||!c.data||!cloudHasData(c.data)){ setSyncStatus('ok'); return; }
     const before=JSON.stringify(DB.data);
     DB.data=mergeData(DB.data, c.data);
     _cloudSha=c.sha||_cloudSha;
@@ -778,7 +807,8 @@ async function syncPoll(){
       else { renderMain(); }
       renderNav();renderTabbar();
     }
-  }catch(e){console.warn('轮询同步失败',e);}
+    setSyncStatus('ok');
+  }catch(e){console.warn('轮询同步失败',e); setSyncStatus('err','同步失败');}
 }
 function startSync(){ if(_syncTimer) return; _syncTimer=setInterval(syncPoll, 6000); }
 async function manualSync(){ toast('同步中…'); await syncPoll(); toast('已同步'); }
@@ -786,15 +816,18 @@ async function manualSync(){ toast('同步中…'); await syncPoll(); toast('已
 // 首屏：先与云端合并，再启动轮询
 (async function autoSync(){
   CLOUD.load();
+  if(!GH.enabled){ setSyncStatus('off','未连接'); return; }
+  setSyncStatus('busy','同步中…');
   try{
     const c=await cloudGet();
     if(c&&c.data&&cloudHasData(c.data)){ DB.data=mergeData(DB.data, c.data); _cloudSha=c.sha||_cloudSha; try{localStorage.setItem(DB._k,JSON.stringify(DB.data));}catch(e){} }
-  }catch(e){console.warn('首屏拉取失败',e);}
+  }catch(e){console.warn('首屏拉取失败',e); setSyncStatus('err','连接失败');}
   try{
     DB.data._syncTS=Date.now();
     localStorage.setItem(DB._k,JSON.stringify(DB.data));
     _cloudSha=await cloudPut(DB.data,_cloudSha);
-  }catch(e){console.warn('首屏推送失败',e);}
+    setSyncStatus('ok');
+  }catch(e){console.warn('首屏推送失败',e); setSyncStatus('err','推送失败');}
   startSync();
 })();
 async function syncFromCloud(){
