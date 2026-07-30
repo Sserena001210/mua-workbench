@@ -519,7 +519,10 @@ DB.init();
    ============================================================ */
 function mergeData(local, cloud){
   const out=JSON.parse(JSON.stringify(cloud||{}));
-  const cols=['bookings','transactions','inventory','gallery','inbox'];
+  // 所有“数据”集合都按 ID 合并、并以最后修改时间(_ts)决胜，确保任意一端的新增/编辑（含预约状态）都能同步到对端
+  const cols=['bookings','transactions','inventory','gallery','inbox','makeupTypes','clients'];
+  // 删除同步：两端删除过的 id 取并集，合并后把这些 id 从各集合中剔除
+  const delSet=new Set([...(local&&local._deleted||[]), ...(cloud&&cloud._deleted||[])]);
   cols.forEach(k=>{
     const cm=new Map();
     (cloud&&cloud[k]||[]).forEach(it=>{ if(it&&it.id!=null) cm.set(it.id, it); });
@@ -527,21 +530,22 @@ function mergeData(local, cloud){
       if(!it||it.id==null) return;
       const ex=cm.get(it.id);
       if(!ex){ cm.set(it.id, it); }            // 本地独有的 → 保留
-      else {                                    // ID 冲突：较新的胜出
+      else {                                    // ID 冲突：较新的胜出（_ts 越大越新）
         const lt=it._ts||0, ct=ex._ts||0;
         if(lt>=ct) cm.set(it.id, it);
       }
     });
-    out[k]=Array.from(cm.values());
+    out[k]=Array.from(cm.values()).filter(x=>!delSet.has(x.id));
   });
-  // 界面配置（导航/工作室名）保留本地，各设备可不同
+  out._deleted=Array.from(delSet);
+  // 仅“界面个性化”保留本地（各设备可不同）；业务数据全部同步
   out.nav=(local&&local.nav)||(cloud&&cloud.nav);
   out.bottomNav=(local&&local.bottomNav)||(cloud&&cloud.bottomNav);
   out.studioName=(local&&local.studioName)||(cloud&&cloud.studioName);
   out.customNav=(local&&local.customNav)||(cloud&&cloud.customNav);
   out.customNavDef=(local&&local.customNavDef)||(cloud&&cloud.customNavDef);
-  out.galleryTags=(local&&local.galleryTags)||(cloud&&cloud.galleryTags);
-  out.makeupTypes=(local&&local.makeupTypes)||(cloud&&cloud.makeupTypes);
+  // 标签类取并集：两端各自新增的标签都保留
+  out.galleryTags=Array.from(new Set([...(local&&local.galleryTags||[]), ...(cloud&&cloud.galleryTags||[])]));
   return out;
 }
 // 云端是否含有可合并的数据（有 _syncTS 或任一集合非空都算，避免“有数据却没时间戳”时被跳过而丢数据）
@@ -1433,6 +1437,7 @@ function toggleTodo(bId,idx,e){
   const b=DB.data.bookings.find(x=>x.id===bId);
   if(!b.todoDone)b.todoDone={};
   b.todoDone[idx]=!b.todoDone[idx];
+  b._ts=Date.now();
   save();
   // 局部更新，不重新渲染整个视图
   const chk=e?e.target.closest('.chk')||e.currentTarget:null;
@@ -1789,6 +1794,7 @@ function saveBooking(id){
   }
   function finishSave(){
     data.imgs=imgs;
+    data._ts=Date.now();
     if(id){Object.assign(DB.data.bookings.find(x=>x.id===id),data);}
     else{data.id=uid();DB.data.bookings.push(data);}
     save();closeModal();rerenderBooking();renderMain();toast('已保存');
@@ -1801,6 +1807,7 @@ function onMakeupTypeChange(){
 function delBooking(id){
   if(!confirm('确认删除该预约？'))return;
   DB.data.bookings=DB.data.bookings.filter(x=>x.id!==id);
+  (DB.data._deleted=DB.data._deleted||[]).push(id);
   save();rerenderBooking();renderMain();toast('已删除');
 }
 
@@ -2105,6 +2112,7 @@ function saveTx(id){
     expCat:type==='支出'?$('#t_expCat').value:'',
     note:$('#t_note').value
   };
+  data._ts=Date.now();
   if(id){Object.assign(DB.data.transactions.find(x=>x.id===id),data);}
   else{data.id=uid();DB.data.transactions.push(data);}
   save();closeModal();rerenderTx();renderMain();toast('已保存');
@@ -2113,6 +2121,7 @@ function editTx(id){openTxModal(id);}
 function delTx(id){
   if(!confirm('确认删除？'))return;
   DB.data.transactions=DB.data.transactions.filter(x=>x.id!==id);
+  (DB.data._deleted=DB.data._deleted||[]).push(id);
   save();rerenderTx();renderMain();toast('已删除');
 }
 /* 收支日历视图 */
@@ -2225,6 +2234,7 @@ function openClientModal(id){
 }
 function saveClient(id){
   const data={name:$('#c_name').value,phone:$('#c_phone').value,skin:$('#c_skin').value,bday:$('#c_bday').value,allergy:$('#c_allergy').value,prefer:$('#c_prefer').value,note:$('#c_note').value};
+  data._ts=Date.now();
   if(id){Object.assign(DB.data.clients.find(x=>x.id===id),data);}
   else{data.id=uid();DB.data.clients.push(data);}
   save();closeModal();renderMain();toast('已保存');
@@ -2232,6 +2242,7 @@ function saveClient(id){
 function delClient(id){
   if(!confirm('确认删除？'))return;
   DB.data.clients=DB.data.clients.filter(x=>x.id!==id);
+  (DB.data._deleted=DB.data._deleted||[]).push(id);
   save();renderMain();toast('已删除');
 }
 
@@ -2328,6 +2339,7 @@ function openInvModal(id){
 }
 function saveInv(id){
   const data={name:$('#i_name').value,shade:$('#i_shade').value,buyDate:$('#i_buy').value,expire:$('#i_exp').value,stock:+$('#i_stock').value||0,unit:$('#i_unit').value,threshold:+$('#i_threshold').value||1};
+  data._ts=Date.now();
   if(id){Object.assign(DB.data.inventory.find(x=>x.id===id),data);}
   else{data.id=uid();DB.data.inventory.push(data);}
   save();closeModal();renderMain();toast('已保存');
@@ -2339,11 +2351,13 @@ function consumeInv(id){
   const n=+v||0;
   if(n>i.stock){toast('消耗数量超过库存');return;}
   i.stock=Math.max(0,i.stock-n);
+  i._ts=Date.now();
   save();renderMain();toast('已消耗'+n+i.unit);
 }
 function delInv(id){
   if(!confirm('确认删除？'))return;
   DB.data.inventory=DB.data.inventory.filter(x=>x.id!==id);
+  (DB.data._deleted=DB.data._deleted||[]).push(id);
   save();renderMain();toast('已删除');
 }
 
@@ -2382,6 +2396,7 @@ function openMakeupTypeModal(id){
 function saveMakeupType(id){
   const data={name:$('#mt_name').value};
   if(!data.name){toast('请输入名称');return;}
+  data._ts=Date.now();
   if(!DB.data.makeupTypes)DB.data.makeupTypes=[];
   if(id){Object.assign(DB.data.makeupTypes.find(x=>x.id===id),data);}
   else{data.id=uid();DB.data.makeupTypes.push(data);}
@@ -2390,6 +2405,7 @@ function saveMakeupType(id){
 function delMakeupType(id){
   if(!confirm('确认删除？'))return;
   DB.data.makeupTypes=DB.data.makeupTypes.filter(x=>x.id!==id);
+  (DB.data._deleted=DB.data._deleted||[]).push(id);
   save();renderMain();toast('已删除');
 }
 /* 预约排单齿轮 - 妆容品类管理弹窗 */
@@ -2689,6 +2705,7 @@ function saveGallery(id){
   }
   function finishSave(){
     data.imgs=imgs;
+    data._ts=Date.now();
     if(id){Object.assign(DB.data.gallery.find(x=>x.id===id),data);}
     else{data.id=uid();DB.data.gallery.push(data);}
     save();closeModal();renderMain();toast('已保存');
@@ -2697,6 +2714,7 @@ function saveGallery(id){
 function delGallery(id){
   if(!confirm('确认删除整组客片？'))return;
   DB.data.gallery=DB.data.gallery.filter(x=>x.id!==id);
+  (DB.data._deleted=DB.data._deleted||[]).push(id);
   save();renderMain();toast('已删除');
 }
 
