@@ -403,14 +403,6 @@ img{max-width:100%;display:block;}
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       重新加载（更新应用）
     </button>
-    <div class="share-box" id="shareBox" style="margin-top:10px;display:none">
-      <div class="share-label">当前分享链接</div>
-      <div class="share-url" id="shareUrl">加载中…</div>
-      <button class="add-nav" onclick="copyShareUrl()" style="margin-top:6px;width:100%">
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        复制链接
-      </button>
-    </div>
   </div>
 </aside>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -455,7 +447,7 @@ img{max-width:100%;display:block;}
 <script>
 // 应用版本号：每次部署新功能就 +1。已加载过旧版本的用户，下次打开本页会自动刷新拿到新代码，
 // 不必再手动清缓存。（注意：应用内“同步/刷新”只拉数据、不更新代码，改了功能必须重载页面。）
-const APP_VER='20260730.6';
+const APP_VER='20260731.1';
 (function(){
   try{
     var sv=localStorage.getItem('mua_app_ver');
@@ -480,6 +472,7 @@ const DB={
       if(s) this.data=JSON.parse(s);
       else this.data=this._seed();
     }catch(e){this.data=this._seed();}
+    if(!this.data.invTags)this.data.invTags=[];
     return this.data;
   },
   save(){
@@ -522,6 +515,7 @@ const DB={
         {id:6,name:'舞台妆'}
       ],
       galleryTags:['新娘','日常','年会','写真','舞台','中式','清透','浓妆','未分类'],
+      invTags:['粉底','唇部','颊彩','眉眼','工具','未分类'],
       transactions:[
         {id:301,date:fmt(d3),orderId:103,type:'收入',amount:300,incCat:'尾款',expCat:'',note:'日常妆尾款'},
         {id:302,date:fmt(today),orderId:101,type:'收入',amount:500,incCat:'定金',expCat:'',note:'新娘妆定金'},
@@ -529,11 +523,11 @@ const DB={
         {id:304,date:fmt(d3),orderId:'',type:'支出',amount:120,incCat:'',expCat:'交通出行',note:'上门打车'}
       ],
       inventory:[
-        {id:401,name:'雅诗兰黛DW粉底液',shade:'1W2',buyDate:'2025-03-15',expire:'2027-03-15',stock:3,unit:'瓶',threshold:1},
-        {id:402,name:'MAC生姜高光',shade:'Soft & Gentle',buyDate:'2024-12-01',expire:'2027-12-01',stock:1,unit:'块',threshold:1},
-        {id:403,name:'香奈儿口红',shade:'58号',buyDate:'2025-01-10',expire:'2028-01-10',stock:4,unit:'支',threshold:2},
-        {id:404,name:'花知晓腮红',shade:'03蜜桃',buyDate:'2024-08-20',expire:'2026-08-20',stock:0,unit:'块',threshold:1},
-        {id:405,name:'眉笔',shade:'灰棕色',buyDate:'2025-05-01',expire:'2028-05-01',stock:2,unit:'支',threshold:2}
+        {id:401,name:'雅诗兰黛DW粉底液',shade:'1W2',buyDate:'2025-03-15',expire:'2027-03-15',stock:3,unit:'瓶',threshold:1,tags:['粉底']},
+        {id:402,name:'MAC生姜高光',shade:'Soft & Gentle',buyDate:'2024-12-01',expire:'2027-12-01',stock:1,unit:'块',threshold:1,tags:['颊彩']},
+        {id:403,name:'香奈儿口红',shade:'58号',buyDate:'2025-01-10',expire:'2028-01-10',stock:4,unit:'支',threshold:2,tags:['唇部']},
+        {id:404,name:'花知晓腮红',shade:'03蜜桃',buyDate:'2024-08-20',expire:'2026-08-20',stock:0,unit:'块',threshold:1,tags:['颊彩']},
+        {id:405,name:'眉笔',shade:'灰棕色',buyDate:'2025-05-01',expire:'2028-05-01',stock:2,unit:'支',threshold:2,tags:['眉眼']}
       ],
       gallery:[
         {id:501,orderId:103,makeup:'日常妆',imgs:[],tags:['日常','清透']},
@@ -564,16 +558,9 @@ function mergeData(local, cloud){
       else {                                    // ID 冲突：较新的胜出（_ts 越大越新）
         const lt=it._ts||0, ct=ex._ts||0;
         if(lt>=ct){
-          // 本机较新或相等：以本机为基底，但保留对端已勾选的“当日临时代办”，
-          // 避免两台手机各自勾选不同待办时，后同步的一方把对方的勾选覆盖掉。
-          let merged=it;
-          if(k==='bookings'){
-            merged=JSON.parse(JSON.stringify(it));
-            const td={...(merged.todoDone||{})};
-            Object.keys(ex.todoDone||{}).forEach(idx=>{ if(ex.todoDone[idx]) td[idx]=true; });
-            merged.todoDone=td;
-          }
-          cm.set(it.id, merged);
+          // 本机较新或相等：整条预约以“最后修改时间”决胜（含待办勾选状态），
+          // 勾选与取消都按最新修改同步给对端，避免“取消勾选同步不出去”的问题。
+          cm.set(it.id, it);
         }
       }
     });
@@ -588,6 +575,7 @@ function mergeData(local, cloud){
   out.customNavDef=(local&&local.customNavDef)||(cloud&&cloud.customNavDef);
   // 标签类取并集：两端各自新增的标签都保留
   out.galleryTags=Array.from(new Set([...(local&&local.galleryTags||[]), ...(cloud&&cloud.galleryTags||[])]));
+  out.invTags=Array.from(new Set([...(local&&local.invTags||[]), ...(cloud&&cloud.invTags||[])]));
   return out;
 }
 // 云端是否含有可合并的数据（有 _syncTS 或任一集合非空都算，避免“有数据却没时间戳”时被跳过而丢数据）
@@ -607,25 +595,51 @@ const normData=d=>{ const c=JSON.parse(JSON.stringify(d||{})); delete c._syncTS;
 const GH = {
   enabled: false,
   token: '',
-  owner: 'Sserena001210',
+  owner: 'zhao-qianxiao',
   repo: 'mua-workbench',
   path: 'data.json',
-  // 同步后端地址。默认直连 GitHub；若你的网络连不上 api.github.com，
-  // 可改成“国内可达的同步代理/Worker 地址”（数据仍存 GitHub，无需迁移）。
-  apiBase: 'https://api.github.com'
+  // 同步后端：默认走 Gitee（国内直连，浏览器无需代理，CORS 已验证可用）。
+  // 想换回 GitHub，把 provider 改成 'github' 并在“连接云端”里填令牌即可。
+  provider: 'gitee',            // 'gitee' | 'github'
+  branch: 'master',             // Gitee/GitHub 默认分支
+  apiBase: 'https://gitee.com/api/v5'
 };
 const CLOUD = {
   KEY:'mua_cloud_cfg',
   load(){
     try{
       const o=JSON.parse(localStorage.getItem(this.KEY)||'null');
-      if(o&&o.token){ GH.enabled=true; GH.token=o.token; if(o.owner)GH.owner=o.owner; if(o.repo)GH.repo=o.repo; if(o.apiBase)GH.apiBase=o.apiBase; }
-      else { GH.enabled=false; GH.token=''; }
+      if(o&&o.token){
+        GH.enabled=true; GH.token=o.token;
+        GH.owner=o.owner||GH.owner; GH.repo=o.repo||GH.repo;
+        GH.provider=o.provider||'gitee';
+        GH.branch=o.branch||'master';
+        // apiBase：若没存，或域名与 provider 不匹配，则按 provider 给默认值，避免“provider 说 gitee 但地址是 github”的错配
+        const wantGitee=(GH.provider==='gitee');
+        const base=o.apiBase||(wantGitee?'https://gitee.com/api/v5':'https://api.github.com');
+        if(wantGitee && !/gitee\.com/i.test(base)) GH.apiBase='https://gitee.com/api/v5';
+        else if(!wantGitee && /gitee\.com/i.test(base)) GH.apiBase='https://api.github.com';
+        else GH.apiBase=base;
+      }else{ GH.enabled=false; GH.token=''; }
     }catch(e){ GH.enabled=false; GH.token=''; }
   },
-  save(o){ localStorage.setItem(this.KEY, JSON.stringify({token:o.token,owner:o.owner||GH.owner,repo:o.repo||GH.repo,apiBase:o.apiBase||GH.apiBase})); this.load(); },
+  save(o){ localStorage.setItem(this.KEY, JSON.stringify({token:o.token,owner:o.owner||GH.owner,repo:o.repo||GH.repo,provider:o.provider||GH.provider,branch:o.branch||GH.branch,apiBase:o.apiBase||GH.apiBase})); this.load(); },
   get(){ try{return JSON.parse(localStorage.getItem(this.KEY)||'null');}catch(e){return null;} }
 };
+// 同步后端抽象：同时支持 Gitee（默认，国内直连）与 GitHub
+function _isGitee(){ return (GH.provider||'gitee')!=='github'; }
+function _cloudBase(){
+  if(_isGitee()) return (GH.apiBase||'https://gitee.com/api/v5').replace(/\/+$/,'');
+  return (GH.apiBase||'https://api.github.com').replace(/\/+$/,'');
+}
+function _contentsURL(){
+  return _cloudBase()+'/repos/'+encodeURIComponent(GH.owner)+'/'+encodeURIComponent(GH.repo)+'/contents/'+encodeURIComponent(GH.path);
+}
+// Gitee 用 access_token 查询参数鉴权（避免 CORS 预检对 Authorization 头的限制）；GitHub 用 Bearer 头
+function _authURL(u){ return _isGitee() ? (u+'?access_token='+encodeURIComponent(GH.token)) : u; }
+function _authHeaders(){
+  return _isGitee() ? {'Accept':'application/json'} : {'Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token};
+}
 // ===== 云端数据加密（AES-GCM + PBKDF2）=====
 // 数据写入仓库前先加密，仓库里只存密文；密钥由用户在手机上设定的“同步口令”本地派生，绝不离开设备。
 const ENC={
@@ -716,27 +730,43 @@ function submitPass(){const inp=document.querySelector('#passInput');const v=inp
 function resetPass(){ENC._key=null;_cloudOff=false;ensureKey(true).then(()=>{if(ENC._key){toast('同步口令已更新');syncPoll();}});}
 function openCloudSetup(){
   const cur=CLOUD.get()||{};
+  const isG=(cur.provider||'gitee')==='gitee';
+  const owner=cur.owner||'zhao-qianxiao';
+  const repo=cur.repo||'mua-workbench';
+  const branch=cur.branch||'master';
+  const apiBase=cur.apiBase||'https://gitee.com/api/v5';
   const m=$('#modalContent');
   m.innerHTML=`<div class="modal-head"><div class="t">连接云端同步</div><button class="x" onclick="closeModal()">✕</button></div>`
     +`<div style="padding:14px 16px;font-size:13px;color:var(--ink-2);line-height:1.7">`
-    +`填入 GitHub 访问令牌（fine-grained，仅授权本仓库 Contents 读写）。令牌只保存在你本机浏览器，不会写进网页源码，也不会上传。<br>`
-    +`<span style="color:var(--ink-3)">用户名与仓库名已内置，通常无需修改。</span><br>`
+    +`推荐用 <b>Gitee</b>（国内直连，无需代理，两台手机都能稳定同步）。填入 Gitee 私人令牌即可。<br>`
+    +(isG?'':'<span style="color:var(--ink-3)">当前为 GitHub 模式；切到 Gitee 后用户名/仓库名会按下方默认填充。</span><br>')
     +`<span style="color:#d33;font-weight:600">连接后还需设置“同步口令”——请和对方手机输入【完全相同】的文字，否则互相看不到数据。</span></div>`
-    +`<div style="padding:0 16px 8px"><input id="cloudToken" type="password" placeholder="GitHub 访问令牌（PAT）" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
-    +`<div style="padding:0 16px 10px;display:flex;gap:8px"><input id="cloudOwner" placeholder="用户名" value="${esc(cur.owner||'Sserena001210')}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"><input id="cloudRepo" placeholder="仓库名" value="${esc(cur.repo||'mua-workbench')}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
-    +`<div style="padding:0 16px 6px"><input id="cloudApi" placeholder="同步服务器地址（默认 https://api.github.com；连不上时填国内代理）" value="${esc(cur.apiBase||'https://api.github.com')}" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:13px"></div>`
+    +`<div style="padding:0 16px 8px"><select id="cloudProvider" onchange="onCloudProviderChange()" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"><option value="gitee" ${isG?'selected':''}>Gitee（推荐·国内直连）</option><option value="github" ${isG?'':'selected'}>GitHub</option></select></div>`
+    +`<div style="padding:0 16px 8px"><input id="cloudToken" type="password" placeholder="Gitee 私人令牌（Gitee→设置→私人令牌，勾选 projects）" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
+    +`<div style="padding:0 16px 10px;display:flex;gap:8px"><input id="cloudOwner" placeholder="用户名" value="${esc(owner)}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"><input id="cloudRepo" placeholder="仓库名" value="${esc(repo)}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
+    +`<div style="padding:0 16px 6px"><input id="cloudBranch" placeholder="分支（Gitee 默认 master）" value="${esc(branch)}" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:13px"></div>`
+    +`<div style="padding:0 16px 6px"><input id="cloudApi" placeholder="API 地址（Gitee 默认 https://gitee.com/api/v5）" value="${esc(apiBase)}" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:13px"></div>`
     +`<div style="padding:0 16px 10px"><button class="btn ghost" style="width:100%" onclick="testSyncConnection()">测试同步连接</button><div id="connTest" style="font-size:12px;color:var(--ink-3);margin-top:6px;min-height:16px"></div></div>`
     +`<div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="submitCloudSetup()">保存并连接</button></div>`;
   $('#modalMask').classList.add('show');
   const inp=$('#cloudToken'); if(inp) inp.focus();
 }
+function onCloudProviderChange(){
+  const p=$('#cloudProvider')?$('#cloudProvider').value:'gitee';
+  const isG=(p==='gitee');
+  const api=$('#cloudApi'); if(api) api.value=isG?'https://gitee.com/api/v5':'https://api.github.com';
+  const br=$('#cloudBranch'); if(br) br.value=isG?'master':'main';
+  const tok=$('#cloudToken'); if(tok) tok.placeholder=isG?'Gitee 私人令牌（勾选 projects）':'GitHub 访问令牌（PAT）';
+}
 function submitCloudSetup(){
   const tok=($('#cloudToken')?$('#cloudToken').value:'').trim();
-  const owner=($('#cloudOwner')?$('#cloudOwner').value:'').trim()||'Sserena001210';
+  const owner=($('#cloudOwner')?$('#cloudOwner').value:'').trim()||'zhao-qianxiao';
   const repo=($('#cloudRepo')?$('#cloudRepo').value:'').trim()||'mua-workbench';
-  const apiBase=($('#cloudApi')?$('#cloudApi').value:'').trim()||'https://api.github.com';
-  if(!tok){toast('请填写 GitHub 令牌');return;}
-  CLOUD.save({token:tok,owner,repo,apiBase});
+  const provider=($('#cloudProvider')?$('#cloudProvider').value:'').trim()||'gitee';
+  const branch=($('#cloudBranch')?$('#cloudBranch').value:'').trim()||'master';
+  const apiBase=($('#cloudApi')?$('#cloudApi').value:'').trim()||(provider==='gitee'?'https://gitee.com/api/v5':'https://api.github.com');
+  if(!tok){toast('请填写访问令牌');return;}
+  CLOUD.save({token:tok,owner,repo,provider,branch,apiBase});
   $('#modalMask').classList.remove('show');
   toast('已连接，正在同步…');
   ENC._key=null; _cloudOff=false;
@@ -745,41 +775,49 @@ function submitCloudSetup(){
 // 同步连接自测：直连后端地址，验证你的网络能否访问同步服务器
 async function testSyncConnection(){
   const tok=($('#cloudToken')?$('#cloudToken').value:'').trim();
-  const owner=($('#cloudOwner')?$('#cloudOwner').value:'').trim()||'Sserena001210';
+  const owner=($('#cloudOwner')?$('#cloudOwner').value:'').trim()||'zhao-qianxiao';
   const repo=($('#cloudRepo')?$('#cloudRepo').value:'').trim()||'mua-workbench';
-  const apiBase=($('#cloudApi')?$('#cloudApi').value:'').trim()||'https://api.github.com';
+  const provider=($('#cloudProvider')?$('#cloudProvider').value:'').trim()||'gitee';
+  const branch=($('#cloudBranch')?$('#cloudBranch').value:'').trim()||'master';
+  const apiBase=($('#cloudApi')?$('#cloudApi').value:'').trim();
   const el=$('#connTest'); if(!el) return;
   if(!tok){ el.style.color='#d33'; el.textContent='请先填写令牌再测试'; return; }
-  el.style.color='var(--ink-3)'; el.textContent='正在测试连接 '+apiBase+' …';
-  const url=apiBase.replace(/\/+$/,'')+'/repos/'+owner+'/'+repo+'/contents/'+'data.json';
+  const isG=(provider==='gitee')||/gitee\.com/i.test(apiBase||'');
+  const base=(apiBase||(isG?'https://gitee.com/api/v5':'https://api.github.com')).replace(/\/+$/,'');
+  const url=base+'/repos/'+encodeURIComponent(owner)+'/'+encodeURIComponent(repo)+'/contents/'+encodeURIComponent('data.json');
+  const finalURL=isG?(url+'?access_token='+encodeURIComponent(tok)):url;
+  const headers=isG?{'Accept':'application/json'}:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+tok};
+  el.style.color='var(--ink-3)'; el.textContent='正在测试连接…';
   const t0=Date.now();
   try{
     const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),8000);
-    const r=await fetch(url,{cache:'no-store',signal:ctrl.signal,headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+tok}});
+    const r=await fetch(finalURL,{cache:'no-store',signal:ctrl.signal,headers});
     clearTimeout(to);
     const ms=Date.now()-t0;
     if(r.status===200||r.status===404){ el.style.color='#1a9e5a'; el.textContent='✓ 连接成功（'+ms+'ms）。该地址在你的网络下可访问，可保存。'; }
-    else if(r.status===401||r.status===403){ el.style.color='#d33'; el.textContent='✗ 令牌无效或无权限（HTTP '+r.status+'）。请检查令牌。'; }
+    else if(r.status===401||r.status===403){ el.style.color='#d33'; el.textContent='✗ 令牌无效或无权限（HTTP '+r.status+'）。请检查令牌（Gitee 需勾选 projects）。'; }
     else { el.style.color='#d33'; el.textContent='✗ 服务器返回 HTTP '+r.status+'（'+ms+'ms）。'; }
   }catch(e){
     const ms=Date.now()-t0;
     el.style.color='#d33';
-    el.textContent='✗ 无法连接（'+ms+'ms，'+ (e.name==='AbortError'?'超时':'网络错误') +'）。你的网络访问不到这个地址——请改用国内可达的同步代理。';
+    el.textContent='✗ 无法连接（'+ms+'ms，'+ (e.name==='AbortError'?'超时':'网络错误') +'）。你的网络访问不到这个地址。';
   }
 }
 
 let _cloudSha=null;
-const apiURL=p=>(GH.apiBase||'https://api.github.com').replace(/\/+$/,'')+'/'+p.replace(/^\/+/,'');
 async function cloudGet(){
   if(GH.enabled){
     await ensureKey();
     if(_cloudOff) throw new Error('云端已关闭');
-    // cache:'no-store' 必须：GitHub Contents API 带缓存头，浏览器会缓存 GET，
+    // cache:'no-store' 必须：Contents API 带缓存头，浏览器会缓存 GET，
     // 导致另一台设备刚写入的数据在轮询窗口内读不到（双向同步失效）
-    const r=await fetch(apiURL(`repos/${GH.owner}/${GH.repo}/contents/${GH.path}`),{cache:'no-store',headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token}});
+    const r=await fetch(_authURL(_contentsURL()),{cache:'no-store',headers:_authHeaders()});
     if(r.status===404) return null;                 // 仓库里还没有数据文件
-    if(!r.ok) throw new Error('gh get '+r.status);
+    if(!r.ok) throw new Error('cloud get '+r.status);
     const j=await r.json();
+    // Gitee 在“带令牌访问不存在的文件”时返回 []（HTTP 200），而非 404；
+    // 目录列表也返回数组。两者都视为“无数据文件”，返回 null 让首推去创建。
+    if(Array.isArray(j)||!j||!j.content) return null;
     // 仓库里只存密文，拉取后本地解密
     let data;
     try{ data=await ENC.decrypt(atob(j.content.replace(/\s/g,''))); _passMismatch=false; clearSyncError(); }
@@ -799,18 +837,25 @@ async function cloudPut(data, sha, _try){
     const payload=await ENC.encrypt(data); // 加密后再上传，仓库只存密文
     const b64=btoa(payload);
     if(b64.length>950000){ toast('同步内容过大（客片图片太多/太大），无法上传云端，请减少图片数量'); setSyncStatus('err','内容过大'); throw new Error('payload too large'); }
-    const body={message:'sync '+new Date().toISOString(), content:b64};
-    if(sha) body.sha=sha;
-    // 两端几乎同时推送会出现 sha 冲突(409)：重新拉取→合并→再推，最多重试 5 次，避免丢数据
-    const r=await fetch(apiURL(`repos/${GH.owner}/${GH.repo}/contents/${GH.path}`),{method:'PUT',cache:'no-store',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(body)});
-    if(r.status===409){
-      if(_try>=5) throw new Error('gh put 409 重试超限');
+    const isG=_isGitee();
+    // Gitee：文件不存在用 POST 新建（无需 sha），已存在用 PUT 更新（带 sha）；
+    // GitHub：统一 PUT，有 sha 就带上。
+    const method=isG?(sha?'PUT':'POST'):'PUT';
+    const body=isG
+      ? Object.assign({message:'sync '+new Date().toISOString(), content:b64, branch:GH.branch||'master'}, sha?{sha}:{})
+      : Object.assign({message:'sync '+new Date().toISOString(), content:b64}, sha?{sha}:{});
+    const r=await fetch(_authURL(_contentsURL()),{method,cache:'no-store',headers:Object.assign({'Content-Type':'application/json'},_authHeaders()),body:JSON.stringify(body)});
+    // 冲突：GitHub 返回 409；Gitee 在 sha 过期/文件被对方抢先创建时也返回 400/409。
+    // 统一处理：重新拉取云端→合并→再推（此时已有 sha，改用 PUT），最多 6 次，避免丢数据。
+    if(r.status===409 || (isG && r.status===400)){
+      if(_try>=6) throw new Error('cloud put 冲突重试超限');
       const cur=await cloudGet();
       if(cur&&cur.data){ data=mergeData(data, cur.data); }
       return cloudPut(data, cur?cur.sha:null, _try+1);
     }
-    if(!r.ok) throw new Error('gh put '+r.status);
-    return (await r.json()).content.sha;
+    if(!r.ok) throw new Error('cloud put '+r.status);
+    const j=await r.json();
+    return (j.content&&j.content.sha)||sha||null;
   }else{
     await fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     return null;
@@ -971,6 +1016,7 @@ let txView='list';
 let txListFilter='';
 let txCalSel='';
 let invSearch='';
+let invTagFilter='';
 
 let navEditMode=false;
 function getAllNav(){
@@ -1666,11 +1712,6 @@ function openBookingModal(id){
     </div>
     <div class="field"><label>上门地址</label>
       <input id="b_addr" value="${esc(addrText(b.addr))}" placeholder="输入或搜索地点">
-      <button type="button" class="btn ghost sm" style="margin-top:6px" onclick="toggleAddrSearch()">🔍 在地图中搜索</button>
-      <div id="addrSearchWrap" style="display:none;margin-top:8px">
-        <input id="addrSearch" placeholder="搜索地点，如：杭州西湖区文三路" style="margin-bottom:6px">
-        <div id="addrResults"></div>
-      </div>
       <div id="addrPicked" style="font-size:12px;color:var(--ink-3);margin-top:6px"></div>
     </div>
     <div class="row">
@@ -1909,9 +1950,27 @@ function saveBooking(id){
   function finishSave(){
     data.imgs=imgs;
     data._ts=Date.now();
-    if(id){Object.assign(DB.data.bookings.find(x=>x.id===id),data);}
-    else{data.id=uid();DB.data.bookings.push(data);}
-    save();closeModal();rerenderBooking();renderMain();toast('已保存');
+    let saved;
+    if(id){Object.assign(DB.data.bookings.find(x=>x.id===id),data);saved=DB.data.bookings.find(x=>x.id===id);}
+    else{data.id=uid();DB.data.bookings.push(data);saved=data;}
+    syncDepositTx(saved);
+    save();closeModal();rerenderBooking();renderMain();rerenderTx();toast('已提交');
+  }
+}
+// 定金自动同步到记账：每个预约保持唯一一条"定金"收入流水，金额跟随 deposit 字段
+function syncDepositTx(b){
+  if(!b||!b.id)return;
+  const txs=DB.data.transactions;
+  const depTx=txs.find(t=>t.orderId===b.id&&t.incCat==='定金');
+  if(b.deposit>0){
+    if(depTx){
+      depTx.amount=b.deposit;depTx.date=b.date;depTx.client=b.client;
+      depTx.note='定金-'+b.client;depTx._ts=Date.now();
+    }else{
+      txs.push({id:uid(),orderId:b.id,type:'收入',amount:b.deposit,incCat:'定金',expCat:'',date:b.date,client:b.client,note:'定金-'+b.client,_ts:Date.now()});
+    }
+  }else if(depTx){
+    DB.data.transactions=txs.filter(t=>t!==depTx);
   }
 }
 function editBooking(id){openBookingModal(id);}
@@ -2063,11 +2122,13 @@ function renderTxSummary(){
   const filtered=getFilteredTx();
   const fInc=filtered.filter(t=>t.type==='收入').reduce((s,t)=>s+t.amount,0);
   const fExp=filtered.filter(t=>t.type==='支出').reduce((s,t)=>s+t.amount,0);
-  // 日历视图只显示 总收入/总支出 两个大框，点击跳转到列表对应筛选明细（不再显示利润框）
+  // 日历视图：总收入 / 总支出 / 总利润 三个大框并排，前两个可点击跳转列表明细
+  const profit=fInc-fExp;
   sum.innerHTML=`
-    <div class="stat-grid">
-      <div class="stat-card" style="cursor:pointer" onclick="txView='list';txListFilter='收入';rerenderTx()"><div class="label">总收入</div><div class="num" style="color:var(--income)">${money(fInc)}</div><div class="sub">点击看收入明细 →</div></div>
-      <div class="stat-card" style="cursor:pointer" onclick="txView='list';txListFilter='支出';rerenderTx()"><div class="label">总支出</div><div class="num" style="color:var(--expense)">${money(fExp)}</div><div class="sub">点击看支出明细 →</div></div>
+    <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card" style="cursor:pointer" onclick="txView='list';txListFilter='收入';rerenderTx()"><div class="label">总收入</div><div class="num" style="color:var(--income)">${money(fInc)}</div><div class="sub">看明细 →</div></div>
+      <div class="stat-card" style="cursor:pointer" onclick="txView='list';txListFilter='支出';rerenderTx()"><div class="label">总支出</div><div class="num" style="color:var(--expense)">${money(fExp)}</div><div class="sub">看明细 →</div></div>
+      <div class="stat-card"><div class="label">总利润</div><div class="num" style="color:${profit>=0?'var(--income)':'var(--expense)'}">${money(profit)}</div><div class="sub">收入−支出</div></div>
     </div>`;
 }
 function renderTxChart(){
@@ -2381,14 +2442,35 @@ function viewInventory(){
     <input id="invSearch" placeholder="🔍 搜索物料名称" value="${invSearch}" oninput="invSearch=this.value;renderInvList()"
       style="flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:14px;background:var(--bg-2);color:var(--ink)">
   </div>
+  <div id="invFilterBox" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${invFilterHTML()}</div>
   <div id="invListBox">${invListHTML()}</div>
   `;
+}
+// 物料筛选条：固定的“库存不足”标签置顶（红色），其后为用户自定义标签
+function invFilterHTML(){
+  const tags=DB.data.invTags||[];
+  const chip=(label,val,sel,special)=>`<span class="tag" data-tag="${esc(val)}" style="cursor:pointer;padding:5px 12px;font-size:12.5px;${sel?(special?'background:var(--expense);color:#fff;border-color:var(--expense)':'background:var(--accent);color:#fff;border-color:var(--accent)'):(special?'background:rgba(255,71,87,.12);color:var(--expense);border:1px solid rgba(255,71,87,.3)':'background:var(--bg-2);color:var(--ink-2)')}" onclick="applyInvTagFilter(this.dataset.tag)">${esc(label)}</span>`;
+  let h=chip('全部','', invTagFilter==='', false);
+  h+=chip('库存不足','库存不足', invTagFilter==='库存不足', true);   // 固定标签，置顶
+  (tags||[]).forEach(t=>{ h+=chip(t,t, invTagFilter===t, false); });
+  return h;
+}
+function applyInvTagFilter(t){
+  invTagFilter=(invTagFilter===t)?'':t;   // 再次点击同一标签 = 取消筛选条件
+  const fb=document.getElementById('invFilterBox'); if(fb) fb.innerHTML=invFilterHTML();
+  renderInvList();
 }
 // 库存列表（含：低库存置顶 + 按名称实时搜索过滤）
 function invListHTML(){
   const all=DB.data.inventory;
   const kw=(invSearch||'').trim().toLowerCase();
   let list=all.filter(i=>!kw || (i.name||'').toLowerCase().includes(kw) || (i.shade||'').toLowerCase().includes(kw));
+  // 标签筛选（含固定的“库存不足”标签：库存≤阈值自动归入）
+  if(invTagFilter==='库存不足'){
+    list=list.filter(i=>i.stock<=i.threshold);
+  }else if(invTagFilter){
+    list=list.filter(i=>(i.tags||[]).includes(invTagFilter));
+  }
   // 低库存（库存≤阈值）始终置顶
   list=list.slice().sort((a,b)=>{
     const la=a.stock<=a.threshold?0:1, lb=b.stock<=b.threshold?0:1;
@@ -2402,6 +2484,7 @@ function invListHTML(){
     const expText=days<0?'已过期':days<60?Math.ceil(days)+'天后过期':'正常';
     const stkColor=i.stock<=i.threshold?'var(--expense)':i.stock<=i.threshold*2?'var(--warn)':'var(--income)';
     const pin=i.stock<=i.threshold?'<span style="font-size:11px;color:var(--expense);margin-left:6px">⚠ 库存不足</span>':'';
+    const tagsHtml=(i.tags&&i.tags.length)?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">${i.tags.map(t=>`<span class="tag" style="font-size:11px;padding:2px 8px;background:var(--bg-2);color:var(--ink-2)">${esc(t)}</span>`).join('')}</div>`:'';
     return `<div class="list-item" id="inv_${i.id}">
       <div class="top">
         <div>
@@ -2417,6 +2500,7 @@ function invListHTML(){
         </div>
         <div style="font-size:11px;color:var(--ink-3)">预警阈值：${i.threshold}${esc(i.unit)}</div>
       </div>
+      ${tagsHtml}
       <div class="actions">
         <button class="btn ghost sm" onclick="openInvModal(${i.id})">编辑</button>
         <button class="btn ghost sm" onclick="consumeInv(${i.id})">消耗</button>
@@ -2448,11 +2532,18 @@ function openInvModal(id){
       <div class="field"><label>单位</label><input id="i_unit" value="${esc(i.unit)}" placeholder="瓶/块/支"></div>
     </div>
     <div class="field"><label>库存预警阈值（低于此数量提醒）</label><input type="number" min="0" id="i_threshold" value="${i.threshold||1}"></div>
+    <div class="field"><label>标签分类（可多选，与客片标签独立管理）</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${(DB.data.invTags||[]).map(t=>`<span class="tag" data-tag="${esc(t)}" style="cursor:pointer;padding:6px 14px;font-size:13px;${(i.tags||[]).includes(t)?'background:var(--accent);color:#fff;border-color:var(--accent)':'background:var(--bg-2);color:var(--ink-2)'}" onclick="toggleInvTagSel(this)">${esc(t)}</span>`).join('')}
+      </div>
+      <button class="btn ghost sm" onclick="manageInvTags()" style="margin-top:8px">管理标签</button>
+    </div>
     <button class="btn block" onclick="saveInv(${id||0})">保存</button>
   `);
+  window._invSelTags=[...(i.tags||[])];
 }
 function saveInv(id){
-  const data={name:$('#i_name').value,shade:$('#i_shade').value,buyDate:$('#i_buy').value,expire:$('#i_exp').value,stock:+$('#i_stock').value||0,unit:$('#i_unit').value,threshold:+$('#i_threshold').value||1};
+  const data={name:$('#i_name').value,shade:$('#i_shade').value,buyDate:$('#i_buy').value,expire:$('#i_exp').value,stock:+$('#i_stock').value||0,unit:$('#i_unit').value,threshold:+$('#i_threshold').value||1,tags:window._invSelTags||[]};
   data._ts=Date.now();
   if(id){Object.assign(DB.data.inventory.find(x=>x.id===id),data);}
   else{data.id=uid();DB.data.inventory.push(data);}
@@ -2473,6 +2564,58 @@ function delInv(id){
   DB.data.inventory=DB.data.inventory.filter(x=>x.id!==id);
   (DB.data._deleted=DB.data._deleted||[]).push(id);
   save();renderMain();toast('已删除');
+}
+// ===== 物料标签管理（与客片标签机制一致：可新增/重命名/删除，并同步更新各物料）=====
+function manageInvTags(){
+  const tags=DB.data.invTags||[];
+  openModal(`
+    <div class="modal-head"><div class="t">管理物料标签</div><button class="x" onclick="closeModal()">✕</button></div>
+    <div id="invTagList">
+      ${tags.map((t,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
+        <span style="flex:1;font-size:14px;font-weight:500">${esc(t)}</span>
+        <button class="btn ghost sm" onclick="renameInvTag(${i})">重命名</button>
+        <button class="btn danger sm" onclick="delInvTag(${i})">删除</button>
+      </div>`).join('')}
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label>新增标签</label>
+      <div style="display:flex;gap:8px">
+        <input id="newInvTag" placeholder="如 工具" style="flex:1">
+        <button class="btn sm" onclick="addInvTag()">添加</button>
+      </div>
+    </div>
+  `);
+}
+function addInvTag(){
+  const v=$('#newInvTag').value.trim();
+  if(!v){toast('请输入标签名');return;}
+  if(!DB.data.invTags)DB.data.invTags=[];
+  if(DB.data.invTags.includes(v)){toast('标签已存在');return;}
+  DB.data.invTags.push(v);
+  save();closeModal();renderMain();toast('已添加');
+}
+function renameInvTag(i){
+  const v=prompt('输入新名称：',DB.data.invTags[i]);
+  if(!v||!v.trim())return;
+  const old=DB.data.invTags[i];
+  DB.data.invTags[i]=v.trim();
+  // 同步更新所有物料上的该标签
+  DB.data.inventory.forEach(it=>{ if(it.tags){ const idx=it.tags.indexOf(old); if(idx>=0)it.tags[idx]=v.trim(); } });
+  save();closeModal();renderMain();toast('已重命名');
+}
+function delInvTag(i){
+  if(!confirm('确认删除标签？相关物料将不再带此标签'))return;
+  const tag=DB.data.invTags[i];
+  DB.data.invTags.splice(i,1);
+  DB.data.inventory.forEach(it=>{ if(it.tags)it.tags=it.tags.filter(t=>t!==tag); });
+  save();closeModal();renderMain();toast('已删除');
+}
+function toggleInvTagSel(el){
+  const tag=el.dataset.tag;
+  if(!window._invSelTags)window._invSelTags=[];
+  const idx=window._invSelTags.indexOf(tag);
+  if(idx>=0){window._invSelTags.splice(idx,1);el.style.background='var(--bg-2)';el.style.color='var(--ink-2)';el.style.borderColor='';}
+  else{window._invSelTags.push(tag);el.style.background='var(--accent)';el.style.color='#fff';el.style.borderColor='var(--accent)';}
 }
 
 /* ============================================================
