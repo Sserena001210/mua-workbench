@@ -450,6 +450,20 @@ img{max-width:100%;display:block;}
 </div>
 
 <script>
+// 应用版本号：每次部署新功能就 +1。已加载过旧版本的用户，下次打开本页会自动刷新拿到新代码，
+// 不必再手动清缓存。（注意：应用内“同步/刷新”只拉数据、不更新代码，改了功能必须重载页面。）
+const APP_VER='20260730.4';
+(function(){
+  try{
+    var sv=localStorage.getItem('mua_app_ver');
+    if(sv && sv!==APP_VER){
+      localStorage.setItem('mua_app_ver',APP_VER);
+      var u=new URL(location.href); u.searchParams.set('v',Date.now());
+      location.href=u.toString(); return;
+    }
+    localStorage.setItem('mua_app_ver',APP_VER);
+  }catch(e){}
+})();
 /* ============================================================
    数据层 - localStorage 持久化
    ============================================================ */
