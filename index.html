@@ -686,7 +686,18 @@ async function cloudPut(data, sha){
     const payload=await ENC.encrypt(data); // 加密后再上传，仓库只存密文
     const body={message:'sync '+new Date().toISOString(), content:btoa(payload)};
     if(sha) body.sha=sha;
-    const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(body)});
+    // 两端几乎同时推送会出现 sha 冲突(409)：重新拉取→合并→再推，避免丢数据
+    let r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(body)});
+    if(r.status===409){
+      try{
+        const cur=await cloudGet();
+        if(cur&&cur.data){ data=mergeData(data, cur.data); }
+        const p2=await ENC.encrypt(data);
+        const b2={message:'sync(retry) '+new Date().toISOString(), content:btoa(p2)};
+        if(cur&&cur.sha) b2.sha=cur.sha;
+        r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/vnd.github+json','Authorization':'Bearer '+GH.token},body:JSON.stringify(b2)});
+      }catch(e){ throw new Error('gh put retry: '+e); }
+    }
     if(!r.ok) throw new Error('gh put '+r.status);
     return (await r.json()).content.sha;
   }else{
