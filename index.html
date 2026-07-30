@@ -145,6 +145,8 @@ img{max-width:100%;display:block;}
 .btn.danger{background:var(--expense);}
 .btn.block{width:100%;}
 .btn.outline{background:transparent;border:1px solid var(--line-2);color:var(--ink-2);}
+.modal-foot{display:flex;gap:10px;padding:14px 16px calc(14px + var(--safe-b));border-top:1px solid var(--line);margin:0 -16px -14px;}
+.modal-foot .btn{flex:1;min-width:0;}
 .field{margin-bottom:14px;}
 .field label{display:block;font-size:12px;color:var(--ink-3);margin-bottom:6px;font-weight:500;}
 .field input,.field textarea,.field select{
@@ -626,7 +628,7 @@ function openPassModal(cb,err){
     +`<span style="color:var(--ink-3)">口令只存在你手机上；忘记后云端数据将无法解密，但本机数据仍在、也可导出备份。</span>`
     +`</div>`
     +`<div style="padding:0 16px 12px"><input id="passInput" type="password" placeholder="输入同步口令" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:15px"></div>`
-    +`<div class="modal-foot"><button class="btn-ghost" onclick="closePassModal()">取消</button><button class="btn-primary" onclick="submitPass()">确定</button></div>`;
+    +`<div class="modal-foot"><button class="btn ghost" onclick="closePassModal()">取消</button><button class="btn" onclick="submitPass()">确定</button></div>`;
   document.querySelector('#modalMask').classList.add('show');
   const inp=document.querySelector('#passInput'); if(inp) inp.focus();
   window.__passCb=cb;
@@ -643,7 +645,7 @@ function openCloudSetup(){
     +`<span style="color:var(--ink-3)">用户名与仓库名已内置，通常无需修改。</span></div>`
     +`<div style="padding:0 16px 8px"><input id="cloudToken" type="password" placeholder="GitHub 访问令牌（PAT）" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
     +`<div style="padding:0 16px 10px;display:flex;gap:8px"><input id="cloudOwner" placeholder="用户名" value="${esc(cur.owner||'Sserena001210')}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"><input id="cloudRepo" placeholder="仓库名" value="${esc(cur.repo||'mua-workbench')}" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;font-size:14px"></div>`
-    +`<div class="modal-foot"><button class="btn-ghost" onclick="closeModal()">取消</button><button class="btn-primary" onclick="submitCloudSetup()">保存并连接</button></div>`;
+    +`<div class="modal-foot"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn" onclick="submitCloudSetup()">保存并连接</button></div>`;
   $('#modalMask').classList.add('show');
   const inp=$('#cloudToken'); if(inp) inp.focus();
 }
